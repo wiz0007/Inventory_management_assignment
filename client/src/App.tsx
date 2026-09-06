@@ -3,11 +3,12 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { Navbar } from './components/Navbar';
 import { LoginPage } from './pages/LoginPage';
 import { LocationsPage } from './pages/LocationsPage';
-import { Boxes, ArrowLeftRight, LayoutDashboard, FileUp, Bell } from 'lucide-react';
+import { ItemsPage } from './pages/ItemsPage';
+import { ArrowLeftRight, LayoutDashboard, FileUp, Bell } from 'lucide-react';
 
 const AppContent: React.FC = () => {
   const { user, loading } = useAuth();
-  const [currentTab, setCurrentTab] = useState('locations');
+  const [currentTab, setCurrentTab] = useState('items');
 
   if (loading) {
     return (
@@ -26,6 +27,7 @@ const AppContent: React.FC = () => {
       <Navbar currentTab={currentTab} setCurrentTab={setCurrentTab} lowStockCount={0} />
 
       <main style={{ flex: 1 }}>
+        {currentTab === 'items' && <ItemsPage />}
         {currentTab === 'locations' && <LocationsPage />}
 
         {currentTab === 'dashboard' && (
@@ -36,21 +38,9 @@ const AppContent: React.FC = () => {
               <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem', fontSize: '0.9rem' }}>
                 Headline KPI cards, breakdown charts by location/category, and 8-week movement trends will be populated here in Sprint 6.
               </p>
-              <button onClick={() => setCurrentTab('locations')} className="btn btn-primary" style={{ marginTop: '1.5rem' }}>
-                View Locations & Staff
+              <button onClick={() => setCurrentTab('items')} className="btn btn-primary" style={{ marginTop: '1.5rem' }}>
+                View Inventory Catalog
               </button>
-            </div>
-          </div>
-        )}
-
-        {currentTab === 'items' && (
-          <div style={{ maxWidth: 1400, margin: '0 auto', padding: '3rem 1.5rem', textAlign: 'center' }}>
-            <div className="glass-panel" style={{ padding: '3rem', maxWidth: 600, margin: '0 auto' }}>
-              <Boxes size={48} color="var(--accent-primary)" style={{ margin: '0 auto 1rem auto' }} />
-              <h2 style={{ fontSize: '1.5rem', fontWeight: 700 }}>Inventory Catalog</h2>
-              <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem', fontSize: '0.9rem' }}>
-                Product catalog, categories, archiving, and audit change timeline are coming up in Sprint 2!
-              </p>
             </div>
           </div>
         )}

@@ -10,8 +10,8 @@ This document tracks the procedural lifecycle, sprint progress, architectural st
 |---|---|---|---|---|
 | **Sprint 0** | Architecture Baseline, Monorepo Setup & Docs | Setup | `main` | ✅ **COMPLETED** |
 | **Sprint 1** | Accounts, Roles & Location RBAC Enforcement | Req 1, 5 | `sprint-1-auth-locations` | ✅ **COMPLETED** *(Merged into `main`)* |
-| **Sprint 2** | Item Catalog, Categories & Immutable Audit Timeline | Req 2, 9 | `sprint-2-items-catalog` | ⏳ **IN PROGRESS** |
-| **Sprint 3** | Append-Only Stock Ledger & Atomic Movement Engine | Req 3, 4 | `sprint-3-stock-ledger` | 📋 *Backlog* |
+| **Sprint 2** | Item Catalog, Categories & Immutable Audit Timeline | Req 2, 9 | `sprint-2-items-catalog` | ✅ **COMPLETED** |
+| **Sprint 3** | Append-Only Stock Ledger & Atomic Movement Engine | Req 3, 4 | `sprint-3-stock-ledger` | ⏳ **IN PROGRESS** |
 | **Sprint 4** | Server-Side Querying, Filtering & Pagination | Req 6 | `sprint-4-search-pagination`| 📋 *Backlog* |
 | **Sprint 5** | Bulk CSV Import/Export & Low-Stock Alerts Engine | Req 7, 10| `sprint-5-csv-alerts` | 📋 *Backlog* |
 | **Sprint 6** | Operational Dashboard & 8-Week Analytics Charts | Req 8 | `sprint-6-dashboard-charts`| 📋 *Backlog* |
@@ -40,11 +40,11 @@ This document tracks the procedural lifecycle, sprint progress, architectural st
 - [x] Updated `SUBMISSION.md` with demo credentials.
 
 ### Sprint 2: Items, Categories & Immutable Audit Timeline (Req 2 & 9)
-- [ ] Category management API (Manager-only CRUD).
-- [ ] Item catalog API: SKU (unique), name, description, unit of measure, reorder level, category.
-- [ ] Item archiving and restoration: blocks new stock movements against archived items while preserving full history.
-- [ ] Immutable Audit Timeline (`item_timeline` table): tracks creation, every field change (with old/new values and user), and staff notes. Database rules block `UPDATE`/`DELETE`.
-- [ ] Frontend Inventory Catalog UI: Item cards/tables, creation modal, edit modal, archive switch, and full timeline view.
+- [x] Category management API (Manager-only CRUD with item count guards).
+- [x] Item catalog API: SKU (unique), name, description, unit of measure, reorder level, category.
+- [x] Item archiving and restoration: blocks new stock movements against archived items while preserving full history.
+- [x] Immutable Audit Timeline (`item_timeline` table): tracks creation, every field change (with old/new values and user), and staff notes. Database rules block `UPDATE`/`DELETE`.
+- [x] Frontend Inventory Catalog UI: Item cards/tables, creation modal, edit modal, archive switch, and full timeline view.
 
 ### Sprint 3: The Stock Ledger & Movement Engine (Req 3 & 4)
 - [ ] Append-only `stock_movements` ledger: receipts, issues, transfers, adjustments.
