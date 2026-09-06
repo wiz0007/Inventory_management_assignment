@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { 
   Boxes, 
@@ -8,7 +8,9 @@ import {
   FileUp, 
   Bell, 
   LogOut, 
-  ChevronDown
+  ChevronDown,
+  Menu,
+  X
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -19,7 +21,8 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, lowStockCount = 0 }) => {
   const { user, logout, login } = useAuth();
-  const [showSwitchMenu, setShowSwitchMenu] = React.useState(false);
+  const [showSwitchMenu, setShowSwitchMenu] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const demoAccounts = [
     { name: 'Elena Rostova', role: 'MANAGER', email: 'manager@distributor.com', pass: 'Manager123!', label: 'Manager (Full Global Access)' },
@@ -29,23 +32,42 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, lowSt
 
   const handleQuickSwitch = async (email: string, pass: string) => {
     setShowSwitchMenu(false);
+    setMobileMenuOpen(false);
     await login(email, pass);
   };
+
+  const handleNavClick = (tab: string) => {
+    setCurrentTab(tab);
+    setMobileMenuOpen(false);
+  };
+
+  const navItems = [
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'items', label: 'Inventory', icon: Boxes },
+    { id: 'movements', label: 'Ledger & Movements', icon: ArrowLeftRight },
+    { id: 'locations', label: 'Locations & Staff', icon: MapPin },
+    { id: 'import-export', label: 'CSV Import/Export', icon: FileUp },
+    { id: 'alerts', label: 'Low Stock', icon: Bell, badge: lowStockCount },
+  ];
 
   return (
     <header style={{
       borderBottom: '1px solid var(--border-subtle)',
-      background: 'rgba(10, 13, 20, 0.85)',
-      backdropFilter: 'blur(12px)',
+      background: 'rgba(10, 13, 20, 0.9)',
+      backdropFilter: 'blur(16px)',
+      WebkitBackdropFilter: 'blur(16px)',
       position: 'sticky',
       top: 0,
       zIndex: 50,
-      padding: '0.75rem 1.5rem'
+      padding: '0.75rem 1rem'
     }}>
-      <div style={{ maxWidth: 1400, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+      <div style={{ maxWidth: 1400, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
         
         {/* Brand Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }} onClick={() => setCurrentTab('dashboard')}>
+        <div 
+          style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', flexShrink: 0 }} 
+          onClick={() => handleNavClick('dashboard')}
+        >
           <div style={{
             width: 38,
             height: 38,
@@ -59,87 +81,49 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, lowSt
             <Boxes size={22} color="#fff" />
           </div>
           <div>
-            <div style={{ fontWeight: 800, fontSize: '1.1rem', letterSpacing: '-0.02em', background: 'linear-gradient(to right, #fff, #94a3b8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            <div style={{ fontWeight: 800, fontSize: '1.05rem', letterSpacing: '-0.02em', background: 'linear-gradient(to right, #fff, #94a3b8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
               StockPulse
             </div>
-            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', letterSpacing: '0.04em', textTransform: 'uppercase', fontWeight: 600 }}>
+            <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', letterSpacing: '0.04em', textTransform: 'uppercase', fontWeight: 600 }}>
               Audit Stock Ledger
             </div>
           </div>
         </div>
 
-        {/* Navigation Tabs */}
-        <nav style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-          <button 
-            onClick={() => setCurrentTab('dashboard')} 
-            className={`btn ${currentTab === 'dashboard' ? 'btn-primary' : 'btn-secondary'}`}
-            style={{ padding: '0.45rem 0.85rem', fontSize: '0.825rem' }}
-          >
-            <LayoutDashboard size={16} />
-            Dashboard
-          </button>
-
-          <button 
-            onClick={() => setCurrentTab('items')} 
-            className={`btn ${currentTab === 'items' ? 'btn-primary' : 'btn-secondary'}`}
-            style={{ padding: '0.45rem 0.85rem', fontSize: '0.825rem' }}
-          >
-            <Boxes size={16} />
-            Inventory
-          </button>
-
-          <button 
-            onClick={() => setCurrentTab('movements')} 
-            className={`btn ${currentTab === 'movements' ? 'btn-primary' : 'btn-secondary'}`}
-            style={{ padding: '0.45rem 0.85rem', fontSize: '0.825rem' }}
-          >
-            <ArrowLeftRight size={16} />
-            Ledger & Movements
-          </button>
-
-          <button 
-            onClick={() => setCurrentTab('locations')} 
-            className={`btn ${currentTab === 'locations' ? 'btn-primary' : 'btn-secondary'}`}
-            style={{ padding: '0.45rem 0.85rem', fontSize: '0.825rem' }}
-          >
-            <MapPin size={16} />
-            Locations & Staff
-          </button>
-
-          <button 
-            onClick={() => setCurrentTab('import-export')} 
-            className={`btn ${currentTab === 'import-export' ? 'btn-primary' : 'btn-secondary'}`}
-            style={{ padding: '0.45rem 0.85rem', fontSize: '0.825rem' }}
-          >
-            <FileUp size={16} />
-            CSV Import/Export
-          </button>
-
-          <button 
-            onClick={() => setCurrentTab('alerts')} 
-            className={`btn ${currentTab === 'alerts' ? 'btn-primary' : 'btn-secondary'}`}
-            style={{ padding: '0.45rem 0.85rem', fontSize: '0.825rem', position: 'relative' }}
-          >
-            <Bell size={16} />
-            Low Stock
-            {lowStockCount > 0 && (
-              <span style={{
-                background: '#ef4444',
-                color: '#fff',
-                borderRadius: '9999px',
-                padding: '0.1rem 0.4rem',
-                fontSize: '0.7rem',
-                fontWeight: 700,
-                marginLeft: '0.35rem'
-              }}>
-                {lowStockCount}
-              </span>
-            )}
-          </button>
+        {/* Desktop Navigation Tabs (Hidden on screens <= 1024px) */}
+        <nav className="nav-desktop-tabs" style={{ alignItems: 'center', gap: '0.35rem' }}>
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = currentTab === item.id;
+            return (
+              <button 
+                key={item.id}
+                onClick={() => handleNavClick(item.id)} 
+                className={`btn ${isActive ? 'btn-primary' : 'btn-secondary'}`}
+                style={{ padding: '0.45rem 0.8rem', fontSize: '0.825rem', whiteSpace: 'nowrap' }}
+              >
+                <Icon size={16} />
+                {item.label}
+                {item.badge !== undefined && item.badge > 0 && (
+                  <span style={{
+                    background: '#ef4444',
+                    color: '#fff',
+                    borderRadius: '9999px',
+                    padding: '0.1rem 0.4rem',
+                    fontSize: '0.7rem',
+                    fontWeight: 700,
+                    marginLeft: '0.35rem'
+                  }}>
+                    {item.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </nav>
 
-        {/* User Profile & Demo Switcher */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        {/* Desktop User Profile & Switcher */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
           {user && (
             <div style={{ position: 'relative' }}>
               <button 
@@ -147,11 +131,11 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, lowSt
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '0.65rem',
+                  gap: '0.5rem',
                   background: 'var(--bg-surface-elevated)',
                   border: '1px solid var(--border-subtle)',
                   borderRadius: 10,
-                  padding: '0.4rem 0.8rem',
+                  padding: '0.4rem 0.75rem',
                   cursor: 'pointer',
                   color: 'var(--text-primary)',
                   textAlign: 'left'
@@ -159,16 +143,12 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, lowSt
               >
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <span style={{ fontWeight: 600, fontSize: '0.825rem' }}>{user.name}</span>
+                    <span style={{ fontWeight: 600, fontSize: '0.8rem', maxWidth: 110, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {user.name}
+                    </span>
                     <span className={user.role === 'MANAGER' ? 'badge badge-manager' : 'badge badge-staff'}>
                       {user.role}
                     </span>
-                  </div>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                    {user.role === 'MANAGER' 
-                      ? '⚡ Global Manager Access'
-                      : `📍 Assigned: ${user.assignedLocations.map(l => l.code).join(', ') || 'None'}`
-                    }
                   </div>
                 </div>
                 <ChevronDown size={14} color="var(--text-muted)" />
@@ -179,12 +159,12 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, lowSt
                 <div style={{
                   position: 'absolute',
                   right: 0,
-                  top: '115%',
-                  width: 310,
+                  top: '120%',
+                  width: 300,
                   background: 'var(--bg-surface)',
                   border: '1px solid var(--border-subtle)',
                   borderRadius: 12,
-                  boxShadow: '0 15px 35px rgba(0,0,0,0.5)',
+                  boxShadow: '0 15px 35px rgba(0,0,0,0.6)',
                   padding: '0.6rem',
                   zIndex: 100,
                 }}>
@@ -203,8 +183,6 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, lowSt
                         marginBottom: '0.25rem',
                         transition: 'background 0.15s ease'
                       }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = user.email === acc.email ? 'rgba(99, 102, 241, 0.15)' : 'transparent'}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <span style={{ fontSize: '0.825rem', fontWeight: 600 }}>{acc.name}</span>
@@ -220,17 +198,127 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, lowSt
             </div>
           )}
 
+          {/* Desktop Logout Button */}
           <button 
             onClick={logout} 
             className="btn btn-secondary" 
             title="Log out"
-            style={{ padding: '0.5rem', borderRadius: 8 }}
+            style={{ padding: '0.45rem 0.65rem', borderRadius: 8 }}
           >
             <LogOut size={16} />
+          </button>
+
+          {/* Mobile Hamburger Toggle Button (Shown on <= 1024px) */}
+          <button 
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="btn btn-secondary nav-mobile-toggle"
+            aria-label="Toggle navigation menu"
+            style={{ padding: '0.45rem 0.65rem', borderRadius: 8 }}
+          >
+            {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
         </div>
 
       </div>
+
+      {/* Mobile Drawer Navigation Menu (Rendered on <= 1024px when open) */}
+      {mobileMenuOpen && (
+        <div 
+          className="nav-mobile-menu mobile-menu-animated glass-panel" 
+          style={{
+            marginTop: '0.75rem',
+            padding: '1rem',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.5rem',
+            borderTop: '1px solid var(--border-subtle)',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.6)',
+          }}
+        >
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, paddingLeft: '0.5rem', marginBottom: '0.25rem' }}>
+            Navigation
+          </div>
+
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = currentTab === item.id;
+            return (
+              <button 
+                key={item.id}
+                onClick={() => handleNavClick(item.id)} 
+                className={`btn ${isActive ? 'btn-primary' : 'btn-secondary'}`}
+                style={{ 
+                  justifyContent: 'flex-start', 
+                  width: '100%', 
+                  padding: '0.65rem 1rem', 
+                  fontSize: '0.9rem',
+                  gap: '0.75rem' 
+                }}
+              >
+                <Icon size={18} />
+                <span>{item.label}</span>
+                {item.badge !== undefined && item.badge > 0 && (
+                  <span style={{
+                    background: '#ef4444',
+                    color: '#fff',
+                    borderRadius: '9999px',
+                    padding: '0.1rem 0.5rem',
+                    fontSize: '0.7rem',
+                    fontWeight: 700,
+                    marginLeft: 'auto'
+                  }}>
+                    {item.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+
+          <div style={{ borderTop: '1px solid var(--border-subtle)', marginTop: '0.5rem', paddingTop: '0.75rem' }}>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, paddingLeft: '0.5rem', marginBottom: '0.5rem' }}>
+              Switch Demo Role (Reviewer)
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+              {demoAccounts.map((acc) => (
+                <button
+                  key={acc.email}
+                  onClick={() => handleQuickSwitch(acc.email, acc.pass)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    width: '100%',
+                    padding: '0.5rem 0.75rem',
+                    borderRadius: 8,
+                    border: '1px solid var(--border-subtle)',
+                    background: user?.email === acc.email ? 'rgba(99, 102, 241, 0.15)' : 'var(--bg-surface-elevated)',
+                    color: 'var(--text-primary)',
+                    cursor: 'pointer',
+                    textAlign: 'left'
+                  }}
+                >
+                  <div>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>{acc.name}</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{acc.label}</div>
+                  </div>
+                  <span className={acc.role === 'MANAGER' ? 'badge badge-manager' : 'badge badge-staff'}>
+                    {acc.role}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <button
+            onClick={() => { setMobileMenuOpen(false); logout(); }}
+            className="btn btn-danger"
+            style={{ width: '100%', marginTop: '0.5rem', gap: '0.5rem' }}
+          >
+            <LogOut size={16} />
+            Sign Out
+          </button>
+        </div>
+      )}
     </header>
   );
 };
