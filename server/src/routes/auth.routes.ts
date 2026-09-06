@@ -55,6 +55,14 @@ authRouter.post('/register', async (req, res, next) => {
 
     const token = jwt.sign({ userId: user.id }, config.jwtSecret, { expiresIn: '7d' });
 
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: '/',
+    });
+
     res.status(201).json({
       message: 'Account created successfully.',
       token,
@@ -102,6 +110,15 @@ authRouter.post('/login', async (req, res, next) => {
 
     const token = jwt.sign({ userId: user.id }, config.jwtSecret, { expiresIn: '7d' });
 
+    // Set secure httpOnly cookie
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: '/',
+    });
+
     res.json({
       message: 'Login successful.',
       token,
@@ -117,6 +134,12 @@ authRouter.post('/login', async (req, res, next) => {
   } catch (err) {
     next(err);
   }
+});
+
+// POST /api/auth/logout
+authRouter.post('/logout', (req, res) => {
+  res.clearCookie('token', { path: '/' });
+  res.json({ message: 'Logged out successfully.' });
 });
 
 // GET /api/auth/me (Current authenticated user profile)

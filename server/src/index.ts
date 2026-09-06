@@ -3,6 +3,7 @@ import cors from 'cors';
 import { config } from './config';
 import { errorHandler } from './middleware/error';
 
+import cookieParser from 'cookie-parser';
 import { authRouter } from './routes/auth.routes';
 import { locationsRouter } from './routes/locations.routes';
 
@@ -13,6 +14,7 @@ app.use(cors({
   credentials: true,
 }));
 
+app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

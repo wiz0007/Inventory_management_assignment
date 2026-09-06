@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { apiFetch, getAuthToken, setAuthToken, clearAuthToken } from '../api';
+import { apiFetch } from '../api';
 
 export type Role = 'MANAGER' | 'STAFF';
 
@@ -22,7 +22,7 @@ interface AuthContextType {
   user: UserProfile | null;
   loading: boolean;
   login: (email: string, pass: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
 
@@ -33,19 +33,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState<boolean>(true);
 
   const refreshUser = async () => {
-    const token = getAuthToken();
-    if (!token) {
-      setUser(null);
-      setLoading(false);
-      return;
-    }
-
     try {
       const res = await apiFetch<{ user: UserProfile }>('/auth/me');
       setUser(res.user);
-    } catch (err) {
-      console.warn('Session expired or invalid token:', err);
-      clearAuthToken();
+    } catch {
+      // Not authenticated or session expired
       setUser(null);
     } finally {
       setLoading(false);
@@ -57,18 +49,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = async (email: string, pass: string) => {
-    const res = await apiFetch<{ token: string; user: UserProfile }>('/auth/login', {
+    const res = await apiFetch<{ user: UserProfile }>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password: pass }),
     });
 
-    setAuthToken(res.token);
     setUser(res.user);
   };
 
-  const logout = () => {
-    clearAuthToken();
-    setUser(null);
+  const logout = async () => {
+    try {
+      await apiFetch('/auth/logout', { method: 'POST' });
+    } catch (err) {
+      console.warn('Logout request error:', err);
+    } finally {
+      setUser(null);
+    }
   };
 
   return (

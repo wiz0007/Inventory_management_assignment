@@ -1,36 +1,21 @@
-// API Client for Inventory & Stock Control
+// Secure API Client with httpOnly Cookie & Anti-CSRF Protection
 
 const API_BASE = '/api';
-
-export function getAuthToken(): string | null {
-  return localStorage.getItem('stockpulse_token');
-}
-
-export function setAuthToken(token: string) {
-  localStorage.setItem('stockpulse_token', token);
-}
-
-export function clearAuthToken() {
-  localStorage.removeItem('stockpulse_token');
-}
 
 export async function apiFetch<T = any>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const token = getAuthToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    'X-Requested-With': 'StockPulse-Client', // Anti-CSRF Header
     ...(options.headers as Record<string, string> || {}),
   };
-
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
 
   const response = await fetch(`${API_BASE}${endpoint}`, {
     ...options,
     headers,
+    credentials: 'include', // Automatically sends secure httpOnly cookie
   });
 
   const data = await response.json().catch(() => ({}));

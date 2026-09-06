@@ -22,12 +22,28 @@ export async function requireAuth(
   next: NextFunction
 ) {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Authentication required. No token provided.' });
+    // 1. Extract token from httpOnly cookie or Authorization header fallback
+    let token = req.cookies?.token;
+
+    if (!token && req.headers.authorization?.startsWith('Bearer ')) {
+      token = req.headers.authorization.split(' ')[1];
     }
 
-    const token = authHeader.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'Authentication required. No session found.' });
+    }
+
+    // 2. Anti-CSRF Protection for cookie-based state-modifying requests
+    if (req.cookies?.token && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
+      const customHeader = req.headers['x-requested-with'];
+      const origin = req.headers.origin;
+      const allowedOrigins = [config.clientUrl, 'http://localhost:5173', 'http://127.0.0.1:5173'];
+
+      if (!customHeader && origin && !allowedOrigins.includes(origin)) {
+        return res.status(403).json({ error: 'CSRF Validation Failed: Untrusted request origin.' });
+      }
+    }
+
     const decoded = jwt.verify(token, config.jwtSecret) as { userId: string };
 
     const user = await prisma.user.findUnique({
