@@ -16,17 +16,18 @@ request can take up to a minute.>
 
 | Role | Email | Password |
 |------|-------|----------|
-| <role 1> | | |
-| <role 2> | | |
+| Inventory Manager (Global Access) | manager@distributor.com | Manager123! |
+| Warehouse Staff (Main & North Depot) | staff1@distributor.com | Staff123! |
+| Warehouse Staff (Downtown Retail) | staff2@distributor.com | Staff123! |
 
 ## Stack
 
 | Layer | What you used | Why |
 |-------|---------------|-----|
-| Frontend | | |
-| Backend | | |
-| Database | | |
-| Hosting | | |
+| Frontend | React (Vite) + TypeScript + Custom CSS/Tokens | Rapid modern SPA, responsive layouts, zero bloat, full TypeScript typing |
+| Backend | Node.js + Express + TypeScript | Robust REST API, strict RBAC middleware, transactional ledger execution |
+| Database | PostgreSQL (Supabase) + Prisma ORM | ACID transactions, row-level locking for atomic transfers, relational schema |
+| Hosting | Supabase (DB) + Vercel / Render | Permanent free tiers, high availability, zero cold starts on DB |
 
 ## Goal checklist
 
@@ -34,11 +35,11 @@ Mark each honestly. Partial is fine — say what is partial.
 
 | # | Goal | Status | Notes |
 |---|------|--------|-------|
-| 1 | | Done / Partial / Not done | |
-| 2 | | | |
-| 3 | | | |
-| 4 | | | |
-| 5 | | | |
+| 1 | Accounts and roles | Done | Manager vs Staff roles enforced on the server via JWT and RBAC middleware |
+| 2 | Items | In progress | Schema ready, building in Sprint 2 |
+| 3 | Stock movements | In progress | Schema ready, building in Sprint 3 |
+| 4 | The stock ledger | In progress | Schema ready, building in Sprint 3 |
+| 5 | Location assignment | Done | Many-to-many staff-location assignments, manager-only assignment control |
 | 6 | | | |
 | 7 | | | |
 | 8 | | | |
