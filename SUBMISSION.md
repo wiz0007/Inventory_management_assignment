@@ -37,8 +37,8 @@ Mark each honestly. Partial is fine — say what is partial.
 |---|------|--------|-------|
 | 1 | Accounts and roles | Done | Manager vs Staff roles enforced on the server via JWT and RBAC middleware |
 | 2 | Items | Done | Unique SKU, Category taxonomy, UOM, Reorder thresholds, and soft archiving |
-| 3 | Stock movements | In progress | Schema ready, building in Sprint 3 |
-| 4 | The stock ledger | In progress | Schema ready, building in Sprint 3 |
+| 3 | Stock movements | Done | Append-only ledger supporting receipts, issues, transfers, and adjustments with actor & location tracking |
+| 4 | The stock ledger | Done | Purely derived on-hand quantity with atomic transfers, negative-stock prevention, and mandatory reasons |
 | 5 | Location assignment | Done | Many-to-many staff-location assignments, manager-only assignment control |
 | 6 | Search, filtering and pagination | In progress | Basic text search & category filters active; full SQL pagination in Sprint 4 |
 | 7 | Bulk import and export | Planned | CSV engine scheduled for Sprint 5 |

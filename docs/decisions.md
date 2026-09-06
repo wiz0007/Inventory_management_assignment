@@ -69,3 +69,11 @@ Log the decisions that actually shaped this codebase — the ones where a real a
 - **Chose:** An append-only event entity `audit_timeline_events` recording discrete event types (`CREATED`, `FIELD_CHANGE`, `NOTE`), actor ID, and exact prior and new values (`fieldName`, `oldValue`, `newValue`).
 - **Rejected:** Storing a mutable change log or relying on generic `updatedAt` table columns.
 - **Why:** Requirement 9 explicitly dictates an immutable, chronological timeline for every item that records every modification over time. Mutable audit records violate compliance and accounting integrity. Our structure captures granular field-level diffs automatically on every item update transaction, while providing warehouse staff with an append-only notes stream without giving staff permissions to modify item attributes.
+
+---
+
+## Decision 9: Transactional Non-Negative Stock Guarantees & Reason Mandatory Validation (Requirements 3 & 4)
+
+- **Chose:** Executing all inventory-depleting movements (`ISSUE`, `TRANSFER`, and downward `ADJUSTMENT`) inside a serializable Prisma `$transaction` that dynamically re-computes the source location's on-hand balance immediately prior to creating the immutable ledger row, coupled with strict server-side validation rejecting any adjustment lacking a non-empty `reason`.
+- **Rejected:** Client-side only stock checks or non-transactional pre-validation.
+- **Why:** In multi-user warehouse environments, concurrent dispatch or transfer requests can easily create race conditions: if Location A has 20 units and two operators simultaneously issue 15 units, non-transactional checks would allow both to proceed, leaving stock at -10 units (a critical domain violation). Wrapping the derivation and insertion within an atomic database transaction guarantees serialized isolation, preventing any race condition from driving on-hand stock below zero. Requiring a mandatory reason for adjustments on the server prevents un-auditable phantom write-offs.
