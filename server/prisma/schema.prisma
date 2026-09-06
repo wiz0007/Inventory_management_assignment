@@ -1,0 +1,160 @@
+// Prisma Schema for Inventory & Stock Control System
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  MANAGER
+  STAFF
+}
+
+enum MovementType {
+  RECEIPT
+  ISSUE
+  TRANSFER
+  ADJUSTMENT
+}
+
+enum TimelineEventType {
+  CREATED
+  FIELD_CHANGE
+  NOTE
+}
+
+model User {
+  id           String         @id @default(uuid())
+  email        String         @unique
+  passwordHash String
+  name         String
+  role         Role           @default(STAFF)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  locations    UserLocation[]
+  movements    StockMovement[]
+  timelineLogs ItemTimeline[]
+  dismissals   LowStockDismissal[]
+
+  @@map("users")
+}
+
+model Location {
+  id        String         @id @default(uuid())
+  name      String         @unique
+  code      String         @unique
+  isActive  Boolean        @default(true)
+  createdAt DateTime       @default(now())
+
+  users               UserLocation[]
+  sourceMovements     StockMovement[] @relation("SourceLocation")
+  destinationMovements StockMovement[] @relation("DestinationLocation")
+
+  @@map("locations")
+}
+
+model UserLocation {
+  userId     String
+  locationId String
+  assignedAt DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@id([userId, locationId])
+  @@map("user_locations")
+}
+
+model Category {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+
+  items     Item[]
+
+  @@map("categories")
+}
+
+model Item {
+  id           String         @id @default(uuid())
+  sku          String         @unique
+  name         String
+  description  String?
+  uom          String         @default("units") // Unit of Measure
+  reorderLevel Int            @default(10)
+  categoryId   String
+  isArchived   Boolean        @default(false)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  category     Category       @relation(fields: [categoryId], references: [id])
+  movements    StockMovement[]
+  timeline     ItemTimeline[]
+  dismissals   LowStockDismissal[]
+
+  @@index([name])
+  @@index([sku])
+  @@index([categoryId])
+  @@index([isArchived])
+  @@map("items")
+}
+
+model StockMovement {
+  id                    String        @id @default(uuid())
+  itemId                String
+  type                  MovementType
+  quantity              Int           // Always positive integer count of units
+  sourceLocationId      String?
+  destinationLocationId String?
+  reason                String?       // Required for ADJUSTMENT
+  userId                String
+  createdAt             DateTime      @default(now())
+
+  item                  Item          @relation(fields: [itemId], references: [id])
+  user                  User          @relation(fields: [userId], references: [id])
+  sourceLocation        Location?     @relation("SourceLocation", fields: [sourceLocationId], references: [id])
+  destinationLocation   Location?     @relation("DestinationLocation", fields: [destinationLocationId], references: [id])
+
+  @@index([itemId])
+  @@index([sourceLocationId])
+  @@index([destinationLocationId])
+  @@index([createdAt])
+  @@map("stock_movements")
+}
+
+model ItemTimeline {
+  id         String            @id @default(uuid())
+  itemId     String
+  userId     String
+  eventType  TimelineEventType
+  fieldName  String?           // e.g. "name", "reorderLevel", "category"
+  oldValue   String?
+  newValue   String?
+  noteText   String?           // Content if eventType == NOTE
+  createdAt  DateTime          @default(now())
+
+  item       Item              @relation(fields: [itemId], references: [id])
+  user       User              @relation(fields: [userId], references: [id])
+
+  @@index([itemId, createdAt])
+  @@map("item_timeline")
+}
+
+model LowStockDismissal {
+  id                 String   @id @default(uuid())
+  itemId             String
+  dismissedBy        String
+  quantityAtDismissal Int
+  dismissedAt        DateTime @default(now())
+
+  item               Item     @relation(fields: [itemId], references: [id])
+  user               User     @relation(fields: [dismissedBy], references: [id])
+
+  @@index([itemId, dismissedAt])
+  @@map("low_stock_dismissals")
+}
