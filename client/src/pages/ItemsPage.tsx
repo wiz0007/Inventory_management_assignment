@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../api';
 import { 
@@ -100,6 +100,34 @@ export const ItemsPage: React.FC = () => {
 
   // Notifications
   const [successMessage, setSuccessMessage] = useState('');
+
+  // Modal accessibility & UX edge cases: Escape key dismiss & body scroll locking
+  const hasActiveModal = Boolean(showAddModal || showEditModal || showCategoryModal || timelineItem);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowAddModal(false);
+        setShowEditModal(false);
+        setShowCategoryModal(false);
+        setTimelineItem(null);
+        setFormError('');
+        setCatError('');
+        setCatSuccess('');
+      }
+    };
+
+    if (hasActiveModal) {
+      const prevOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      window.addEventListener('keydown', handleKeyDown);
+
+      return () => {
+        document.body.style.overflow = prevOverflow;
+        window.removeEventListener('keydown', handleKeyDown);
+      };
+    }
+  }, [hasActiveModal]);
 
   const fetchItems = async () => {
     try {
@@ -326,39 +354,38 @@ export const ItemsPage: React.FC = () => {
     }
   };
 
-  // Filter items by active/archived state
-  const displayedItems = items.filter(item => {
-    if (archiveFilter === 'active') return !item.isArchived;
-    if (archiveFilter === 'archived') return item.isArchived;
-    return true;
-  });
+  // Filter items by active/archived state (memoized for performance)
+  const displayedItems = useMemo(() => {
+    return items.filter(item => {
+      if (archiveFilter === 'active') return !item.isArchived;
+      if (archiveFilter === 'archived') return item.isArchived;
+      return true;
+    });
+  }, [items, archiveFilter]);
 
   return (
     <div style={{ maxWidth: 1400, margin: '0 auto', padding: '1.5rem 1rem' }}>
       
       {/* Top Header & Overview */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
+      <div className="catalog-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
             <h1 style={{ fontSize: '1.6rem', fontWeight: 800, letterSpacing: '-0.02em', margin: 0 }}>
               Inventory & Items Catalog
             </h1>
-            <span className="badge badge-manager" style={{ fontSize: '0.75rem' }}>
-              Sprint 2 (Req 2 & 9)
-            </span>
           </div>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginTop: '0.35rem', maxWidth: 650 }}>
-            Master product catalog with category taxonomy, reorder thresholds, soft-archiving, and an immutable audit timeline recording every creation, attribute shift, and operational note.
+            Master product catalog with category taxonomy, reorder thresholds, soft-archiving, and immutable audit timeline logs.
           </p>
         </div>
 
         {/* Action Controls */}
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <div className="catalog-header-actions" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           {isManager && (
             <>
               <button 
                 onClick={() => setShowCategoryModal(true)} 
-                className="btn btn-secondary"
+                className="btn btn-secondary catalog-action-btn"
                 style={{ fontSize: '0.85rem' }}
               >
                 <Layers size={16} />
@@ -367,7 +394,7 @@ export const ItemsPage: React.FC = () => {
 
               <button 
                 onClick={handleOpenAdd} 
-                className="btn btn-primary"
+                className="btn btn-primary catalog-action-btn"
                 style={{ fontSize: '0.85rem' }}
               >
                 <Plus size={16} />
@@ -402,7 +429,7 @@ export const ItemsPage: React.FC = () => {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
           
           {/* Search Form */}
-          <form onSubmit={handleSearchSubmit} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: '1 1 300px' }}>
+          <form onSubmit={handleSearchSubmit} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: '1 1 260px', maxWidth: 480, minWidth: 0 }}>
             <div style={{ position: 'relative', width: '100%' }}>
               <Search size={16} color="var(--text-muted)" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
               <input
@@ -414,15 +441,16 @@ export const ItemsPage: React.FC = () => {
                 style={{ paddingLeft: '2.25rem', fontSize: '0.875rem' }}
               />
             </div>
-            <button type="submit" className="btn btn-secondary" style={{ padding: '0.55rem 0.9rem' }}>
+            <button type="submit" className="btn btn-secondary" style={{ padding: '0.55rem 0.9rem', flexShrink: 0 }}>
               Search
             </button>
           </form>
 
           {/* Active / Archived Pill Selector */}
-          <div style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-surface-elevated)', borderRadius: 8, padding: '0.2rem', border: '1px solid var(--border-subtle)' }}>
+          <div className="filter-segmented-group" style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-surface-elevated)', borderRadius: 8, padding: '0.2rem', border: '1px solid var(--border-subtle)' }}>
             <button
               onClick={() => setArchiveFilter('active')}
+              className="filter-segment-btn"
               style={{
                 padding: '0.35rem 0.75rem',
                 fontSize: '0.8rem',
@@ -439,6 +467,7 @@ export const ItemsPage: React.FC = () => {
             </button>
             <button
               onClick={() => setArchiveFilter('archived')}
+              className="filter-segment-btn"
               style={{
                 padding: '0.35rem 0.75rem',
                 fontSize: '0.8rem',
@@ -455,6 +484,7 @@ export const ItemsPage: React.FC = () => {
             </button>
             <button
               onClick={() => setArchiveFilter('all')}
+              className="filter-segment-btn"
               style={{
                 padding: '0.35rem 0.75rem',
                 fontSize: '0.8rem',
@@ -472,28 +502,48 @@ export const ItemsPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Category Filter Chips */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', borderTop: '1px solid var(--border-subtle)', paddingTop: '0.75rem' }}>
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', marginRight: '0.25rem' }}>
-            Category:
-          </span>
-          <button
-            onClick={() => setSelectedCategory('all')}
-            className={`btn ${selectedCategory === 'all' ? 'btn-primary' : 'btn-secondary'}`}
-            style={{ padding: '0.25rem 0.65rem', fontSize: '0.75rem', borderRadius: 9999 }}
-          >
-            All Categories ({items.length})
-          </button>
-          {categories.map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => setSelectedCategory(cat.id)}
-              className={`btn ${selectedCategory === cat.id ? 'btn-primary' : 'btn-secondary'}`}
-              style={{ padding: '0.25rem 0.65rem', fontSize: '0.75rem', borderRadius: 9999 }}
+        {/* Category Dropdown Selector (User Requested) */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '0.75rem',
+          borderTop: '1px solid var(--border-subtle)',
+          paddingTop: '0.75rem'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Layers size={16} color="var(--accent-primary)" />
+            <label htmlFor="category-select" style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Category
+            </label>
+          </div>
+
+          <div style={{ minWidth: 180, maxWidth: 340, flex: '0 1 340px' }}>
+            <select
+              id="category-select"
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="form-input"
+              style={{
+                padding: '0.45rem 0.75rem',
+                fontSize: '0.85rem',
+                cursor: 'pointer',
+                fontWeight: 600,
+                background: 'var(--bg-surface-elevated)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 8,
+                color: 'var(--text-primary)'
+              }}
             >
-              {cat.name}
-            </button>
-          ))}
+              <option value="all">All Categories ({items.length} total items)</option>
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name} {cat._count?.items !== undefined ? `(${cat._count.items})` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
@@ -527,31 +577,16 @@ export const ItemsPage: React.FC = () => {
           {displayedItems.map((item) => (
             <div 
               key={item.id} 
-              className="glass-panel"
+              className="glass-panel item-card"
               style={{
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                padding: '1.25rem',
-                position: 'relative',
                 opacity: item.isArchived ? 0.75 : 1,
-                border: item.isArchived ? '1px dashed rgba(148, 163, 184, 0.3)' : '1px solid var(--border-subtle)',
-                transition: 'all 0.2s ease',
+                border: item.isArchived ? '1px dashed rgba(148, 163, 184, 0.3)' : undefined,
               }}
             >
               {/* Card Header */}
               <div>
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                  <span style={{
-                    fontFamily: 'monospace',
-                    fontWeight: 700,
-                    fontSize: '0.8rem',
-                    background: 'rgba(99, 102, 241, 0.15)',
-                    color: '#818cf8',
-                    padding: '0.2rem 0.5rem',
-                    borderRadius: 6,
-                    border: '1px solid rgba(99, 102, 241, 0.3)'
-                  }}>
+                  <span className="sku-pill">
                     {item.sku}
                   </span>
 
@@ -590,30 +625,21 @@ export const ItemsPage: React.FC = () => {
                 </p>
 
                 {/* Specs Box */}
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 1fr',
-                  gap: '0.5rem',
-                  background: 'var(--bg-surface-elevated)',
-                  borderRadius: 8,
-                  padding: '0.65rem 0.75rem',
-                  marginBottom: '1rem',
-                  border: '1px solid var(--border-subtle)'
-                }}>
+                <div className="item-spec-box">
                   <div>
-                    <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>
+                    <div className="item-spec-label">
                       Unit of Measure
                     </div>
-                    <div style={{ fontSize: '0.875rem', fontWeight: 600, marginTop: '0.15rem' }}>
+                    <div className="item-spec-value">
                       {item.uom}
                     </div>
                   </div>
 
                   <div>
-                    <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>
+                    <div className="item-spec-label">
                       Reorder Threshold
                     </div>
-                    <div style={{ fontSize: '0.875rem', fontWeight: 600, marginTop: '0.15rem', color: '#f59e0b' }}>
+                    <div className="item-spec-value" style={{ color: '#f59e0b' }}>
                       {item.reorderLevel} {item.uom}
                     </div>
                   </div>
@@ -662,18 +688,27 @@ export const ItemsPage: React.FC = () => {
       {/* ADD ITEM MODAL (Manager Only)                             */}
       {/* ======================================================== */}
       {showAddModal && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(0,0,0,0.7)',
-          backdropFilter: 'blur(6px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 100,
-          padding: '1rem'
-        }}>
-          <div className="glass-panel" style={{ width: '100%', maxWidth: 520, padding: '1.75rem', position: 'relative' }}>
+        <div 
+          onClick={() => { setShowAddModal(false); setFormError(''); }}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.75)',
+            backdropFilter: 'blur(6px)',
+            WebkitBackdropFilter: 'blur(6px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 100,
+            padding: '1rem',
+            overflowY: 'auto'
+          }}
+        >
+          <div 
+            className="glass-panel modal-responsive-panel" 
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto', position: 'relative' }}
+          >
             <button
               onClick={() => setShowAddModal(false)}
               style={{ position: 'absolute', top: 16, right: 16, background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
@@ -703,7 +738,7 @@ export const ItemsPage: React.FC = () => {
             )}
 
             <form onSubmit={handleCreateItem}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem', marginBottom: '0.75rem' }}>
                 <div>
                   <label className="form-label">SKU (Stock Keeping Unit)</label>
                   <input
@@ -744,7 +779,7 @@ export const ItemsPage: React.FC = () => {
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem', marginBottom: '0.75rem' }}>
                 <div>
                   <label className="form-label">Unit of Measure (UOM)</label>
                   <input
@@ -798,18 +833,27 @@ export const ItemsPage: React.FC = () => {
       {/* EDIT ITEM MODAL (Manager Only)                            */}
       {/* ======================================================== */}
       {showEditModal && selectedItem && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(0,0,0,0.7)',
-          backdropFilter: 'blur(6px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 100,
-          padding: '1rem'
-        }}>
-          <div className="glass-panel" style={{ width: '100%', maxWidth: 520, padding: '1.75rem', position: 'relative' }}>
+        <div 
+          onClick={() => { setShowEditModal(false); setFormError(''); }}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.75)',
+            backdropFilter: 'blur(6px)',
+            WebkitBackdropFilter: 'blur(6px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 100,
+            padding: '1rem',
+            overflowY: 'auto'
+          }}
+        >
+          <div 
+            className="glass-panel modal-responsive-panel" 
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto', position: 'relative' }}
+          >
             <button
               onClick={() => setShowEditModal(false)}
               style={{ position: 'absolute', top: 16, right: 16, background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
@@ -850,7 +894,7 @@ export const ItemsPage: React.FC = () => {
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem', marginBottom: '0.75rem' }}>
                 <div>
                   <label className="form-label">Category</label>
                   <select
@@ -916,26 +960,35 @@ export const ItemsPage: React.FC = () => {
       {/* IMMUTABLE AUDIT TIMELINE DRAWER / MODAL (Req 9)           */}
       {/* ======================================================== */}
       {timelineItem && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(0,0,0,0.7)',
-          backdropFilter: 'blur(6px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 100,
-          padding: '1rem'
-        }}>
-          <div className="glass-panel" style={{
-            width: '100%',
-            maxWidth: 680,
-            maxHeight: '90vh',
+        <div 
+          onClick={() => setTimelineItem(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.75)',
+            backdropFilter: 'blur(6px)',
+            WebkitBackdropFilter: 'blur(6px)',
             display: 'flex',
-            flexDirection: 'column',
-            padding: '1.75rem',
-            position: 'relative'
-          }}>
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 100,
+            padding: '1rem',
+            overflowY: 'auto'
+          }}
+        >
+          <div 
+            className="glass-panel modal-responsive-panel" 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: '100%',
+              maxWidth: 680,
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+              position: 'relative'
+            }}
+          >
             <button
               onClick={() => setTimelineItem(null)}
               style={{ position: 'absolute', top: 16, right: 16, background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
@@ -944,14 +997,14 @@ export const ItemsPage: React.FC = () => {
             </button>
 
             {/* Header */}
-            <div style={{ borderBottom: '1px solid var(--border-subtle)', paddingBottom: '1rem', marginBottom: '1rem' }}>
+            <div style={{ borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.75rem', marginBottom: '0.75rem', minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
                 <History size={20} color="var(--accent-primary)" />
-                <h2 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0 }}>
+                <h2 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0 }}>
                   Immutable Audit Timeline
                 </h2>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginTop: '0.35rem', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.35rem', flexWrap: 'wrap', minWidth: 0 }}>
                 <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--accent-primary)' }}>
                   {timelineItem.sku}
                 </span>
@@ -965,21 +1018,21 @@ export const ItemsPage: React.FC = () => {
             </div>
 
             {/* Add Note Input Area (Available for both Manager and Staff) */}
-            <form onSubmit={handleAddNote} style={{ marginBottom: '1.25rem' }}>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <form onSubmit={handleAddNote} style={{ marginBottom: '1rem', width: '100%', minWidth: 0 }}>
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', minWidth: 0 }}>
                 <input
                   type="text"
                   value={newNote}
                   onChange={(e) => setNewNote(e.target.value)}
-                  placeholder="Record an operational note or inspection log..."
+                  placeholder="Record an inspection log or note..."
                   className="form-input"
-                  style={{ fontSize: '0.85rem' }}
+                  style={{ fontSize: '0.85rem', flex: '1 1 180px', minWidth: 0 }}
                 />
                 <button 
                   type="submit" 
                   disabled={addingNote || !newNote.trim()} 
                   className="btn btn-primary"
-                  style={{ padding: '0.5rem 0.9rem', fontSize: '0.85rem', flexShrink: 0 }}
+                  style={{ padding: '0.5rem 0.9rem', fontSize: '0.85rem', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.35rem' }}
                 >
                   <Send size={15} />
                   {addingNote ? 'Saving...' : 'Add Note'}
@@ -987,8 +1040,8 @@ export const ItemsPage: React.FC = () => {
               </div>
             </form>
 
-            {/* Timeline Stream (Scrollable) */}
-            <div style={{ flex: 1, overflowY: 'auto', paddingRight: '0.5rem' }}>
+            {/* Timeline Stream (Scrollable with hidden horizontal overflow) */}
+            <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', paddingRight: '0.25rem', width: '100%', minWidth: 0 }}>
               {loadingTimeline ? (
                 <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
                   Loading timeline history...
@@ -998,7 +1051,7 @@ export const ItemsPage: React.FC = () => {
                   No timeline events found.
                 </div>
               ) : (
-                <div style={{ position: 'relative', paddingLeft: '1.5rem', borderLeft: '2px solid rgba(99, 102, 241, 0.25)', marginLeft: '0.75rem' }}>
+                <div className="timeline-stream-container" style={{ position: 'relative', paddingLeft: '1.25rem', borderLeft: '2px solid rgba(99, 102, 241, 0.25)', marginLeft: '0.5rem', minWidth: 0 }}>
                   {timelineEvents.map((ev) => {
                     const isCreated = ev.eventType === 'CREATED';
                     const isFieldChange = ev.eventType === 'FIELD_CHANGE';
@@ -1006,14 +1059,14 @@ export const ItemsPage: React.FC = () => {
                     const dateStr = new Date(ev.createdAt).toLocaleString();
 
                     return (
-                      <div key={ev.id} style={{ position: 'relative', marginBottom: '1.25rem' }}>
+                      <div key={ev.id} style={{ position: 'relative', marginBottom: '1rem', minWidth: 0 }}>
                         {/* Dot indicator */}
                         <div style={{
                           position: 'absolute',
-                          left: '-1.95rem',
-                          top: '0.2rem',
-                          width: 14,
-                          height: 14,
+                          left: '-1.65rem',
+                          top: '0.25rem',
+                          width: 12,
+                          height: 12,
                           borderRadius: '50%',
                           background: isCreated ? '#10b981' : isFieldChange ? '#6366f1' : '#f59e0b',
                           boxShadow: `0 0 8px ${isCreated ? 'rgba(16, 185, 129, 0.5)' : isFieldChange ? 'rgba(99, 102, 241, 0.5)' : 'rgba(245, 158, 11, 0.5)'}`,
@@ -1021,43 +1074,42 @@ export const ItemsPage: React.FC = () => {
                         }} />
 
                         {/* Event Card */}
-                        <div style={{
-                          background: 'var(--bg-surface-elevated)',
-                          border: '1px solid var(--border-subtle)',
-                          borderRadius: 8,
-                          padding: '0.75rem 0.9rem'
-                        }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.35rem', flexWrap: 'wrap', gap: '0.4rem' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                              <span style={{
-                                fontSize: '0.7rem',
-                                fontWeight: 700,
-                                textTransform: 'uppercase',
-                                padding: '0.15rem 0.4rem',
-                                borderRadius: 4,
-                                background: isCreated ? 'rgba(16, 185, 129, 0.2)' : isFieldChange ? 'rgba(99, 102, 241, 0.2)' : 'rgba(245, 158, 11, 0.2)',
-                                color: isCreated ? '#34d399' : isFieldChange ? '#818cf8' : '#fbbf24'
-                              }}>
-                                {ev.eventType}
-                              </span>
-                              <span style={{ fontSize: '0.825rem', fontWeight: 600 }}>
-                                {ev.user.name}
-                              </span>
-                              <span className={ev.user.role === 'MANAGER' ? 'badge badge-manager' : 'badge badge-staff'} style={{ fontSize: '0.65rem', padding: '0.05rem 0.35rem' }}>
-                                {ev.user.role}
+                        <div className="timeline-event-card">
+                          {/* Card Header (Two-row responsive hierarchy: Badges on Row 1, Full User Name on Row 2) */}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', marginBottom: '0.4rem', minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.35rem', minWidth: 0 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap', minWidth: 0 }}>
+                                <span style={{
+                                  fontSize: '0.68rem',
+                                  fontWeight: 700,
+                                  textTransform: 'uppercase',
+                                  padding: '0.15rem 0.4rem',
+                                  borderRadius: 4,
+                                  background: isCreated ? 'rgba(16, 185, 129, 0.2)' : isFieldChange ? 'rgba(99, 102, 241, 0.2)' : 'rgba(245, 158, 11, 0.2)',
+                                  color: isCreated ? '#34d399' : isFieldChange ? '#818cf8' : '#fbbf24'
+                                }}>
+                                  {ev.eventType}
+                                </span>
+                                <span className={ev.user.role === 'MANAGER' ? 'badge badge-manager' : 'badge badge-staff'} style={{ fontSize: '0.65rem', padding: '0.05rem 0.35rem' }}>
+                                  {ev.user.role}
+                                </span>
+                              </div>
+
+                              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                                {dateStr}
                               </span>
                             </div>
 
-                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                              {dateStr}
-                            </span>
+                            <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)', wordBreak: 'break-word', minWidth: 0 }}>
+                              {ev.user.name}
+                            </div>
                           </div>
 
                           {/* Event Content */}
                           {isFieldChange && (
-                            <div style={{ fontSize: '0.825rem', color: 'var(--text-primary)', marginTop: '0.25rem' }}>
+                            <div style={{ fontSize: '0.825rem', color: 'var(--text-primary)', marginTop: '0.25rem', minWidth: 0 }}>
                               Modified field <code style={{ background: 'rgba(255,255,255,0.08)', padding: '0.1rem 0.3rem', borderRadius: 4 }}>{ev.fieldName}</code>:
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.35rem', fontSize: '0.8rem' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.35rem', fontSize: '0.8rem' }}>
                                 <span style={{ textDecoration: 'line-through', color: '#f87171' }}>
                                   {ev.oldValue || '(empty)'}
                                 </span>
@@ -1070,7 +1122,7 @@ export const ItemsPage: React.FC = () => {
                           )}
 
                           {(isCreated || isNote) && (
-                            <div style={{ fontSize: '0.825rem', color: 'var(--text-primary)', marginTop: '0.2rem', lineHeight: 1.4 }}>
+                            <div style={{ fontSize: '0.825rem', color: 'var(--text-primary)', marginTop: '0.2rem', lineHeight: 1.4, wordBreak: 'break-word' }}>
                               {ev.noteText}
                             </div>
                           )}
@@ -1099,18 +1151,27 @@ export const ItemsPage: React.FC = () => {
       {/* CATEGORY MANAGEMENT MODAL (Manager Only)                  */}
       {/* ======================================================== */}
       {showCategoryModal && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(0,0,0,0.7)',
-          backdropFilter: 'blur(6px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 100,
-          padding: '1rem'
-        }}>
-          <div className="glass-panel" style={{ width: '100%', maxWidth: 500, padding: '1.75rem', position: 'relative' }}>
+        <div 
+          onClick={() => { setShowCategoryModal(false); setCatError(''); setCatSuccess(''); }}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.75)',
+            backdropFilter: 'blur(6px)',
+            WebkitBackdropFilter: 'blur(6px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 100,
+            padding: '1rem',
+            overflowY: 'auto'
+          }}
+        >
+          <div 
+            className="glass-panel modal-responsive-panel" 
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: '100%', maxWidth: 500, maxHeight: '90vh', overflowY: 'auto', position: 'relative' }}
+          >
             <button
               onClick={() => setShowCategoryModal(false)}
               style={{ position: 'absolute', top: 16, right: 16, background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}

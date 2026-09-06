@@ -230,9 +230,21 @@ code, pre, .font-mono {
    Responsive Design & Mobile Navigation System
    ========================================================================== */
 
+/* Prevent horizontal page overflow */
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
 /* Navbar Breakpoints */
-@media (max-width: 1024px) {
+@media (max-width: 1180px) {
   .nav-desktop-tabs {
+    display: none !important;
+  }
+  .nav-desktop-logout {
+    display: none !important;
+  }
+  .nav-desktop-profile {
     display: none !important;
   }
   .nav-mobile-toggle {
@@ -240,9 +252,27 @@ code, pre, .font-mono {
   }
 }
 
-@media (min-width: 1025px) {
+@media (max-width: 768px) {
+  .nav-logo-subtitle {
+    display: none !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .nav-logo-title {
+    display: none !important;
+  }
+}
+
+@media (min-width: 1181px) {
   .nav-desktop-tabs {
     display: flex !important;
+  }
+  .nav-desktop-profile {
+    display: block !important;
+  }
+  .nav-desktop-logout {
+    display: inline-flex !important;
   }
   .nav-mobile-toggle {
     display: none !important;
@@ -296,6 +326,81 @@ code, pre, .font-mono {
 }
 
 /* Responsive Headers & Banners */
+/* Modal Responsive Panel Base */
+.modal-responsive-panel {
+  width: 100%;
+  max-width: 680px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  padding: 1.75rem;
+  position: relative;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+/* Reusable Inventory & Catalog Utility Classes */
+.sku-pill {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 0.8rem;
+  background: rgba(99, 102, 241, 0.15);
+  color: #818cf8;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  display: inline-block;
+}
+
+.item-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 1.25rem;
+  position: relative;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.item-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(99, 102, 241, 0.35);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+}
+
+.item-spec-box {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  background: var(--bg-surface-elevated);
+  border-radius: 8px;
+  padding: 0.65rem 0.75rem;
+  margin-bottom: 1rem;
+  border: 1px solid var(--border-subtle);
+}
+
+.item-spec-label {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.item-spec-value {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-top: 0.15rem;
+}
+
+.timeline-event-card {
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 0.7rem 0.85rem;
+  min-width: 0;
+  overflow: hidden;
+  word-break: break-word;
+}
+
 @media (max-width: 640px) {
   .responsive-header {
     flex-direction: column !important;
@@ -309,6 +414,48 @@ code, pre, .font-mono {
     flex-direction: column !important;
     align-items: flex-start !important;
     gap: 0.75rem !important;
+  }
+
+  .catalog-header {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+  .catalog-header-actions {
+    width: 100% !important;
+    display: flex !important;
+  }
+  .catalog-action-btn {
+    flex: 1 1 0 !important;
+    justify-content: center !important;
+  }
+
+  .filter-segmented-group {
+    width: 100% !important;
+    display: flex !important;
+  }
+  .filter-segment-btn {
+    flex: 1 1 0 !important;
+    text-align: center !important;
+    padding: 0.35rem 0.2rem !important;
+    font-size: 0.75rem !important;
+    justify-content: center !important;
+  }
+
+  /* Modal Responsive Padding */
+  .modal-overlay {
+    padding: 0.5rem !important;
+  }
+  .modal-content {
+    padding: 1.25rem 1rem !important;
+    max-height: 94vh !important;
+  }
+  .modal-responsive-panel {
+    padding: 1.1rem 0.85rem !important;
+    max-height: 94vh !important;
+  }
+  .timeline-stream-container {
+    padding-left: 1rem !important;
+    margin-left: 0.25rem !important;
   }
 }
 

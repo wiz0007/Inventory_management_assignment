@@ -69,6 +69,29 @@ export const LocationsPage: React.FC = () => {
     fetchLocations();
   }, [user]);
 
+  // Modal accessibility & UX edge cases: Escape key dismiss & body scroll locking
+  const hasActiveModal = Boolean(showCreateModal || selectedLocationForStaff);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowCreateModal(false);
+        setSelectedLocationForStaff(null);
+      }
+    };
+
+    if (hasActiveModal) {
+      const prevOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      window.addEventListener('keydown', handleKeyDown);
+
+      return () => {
+        document.body.style.overflow = prevOverflow;
+        window.removeEventListener('keydown', handleKeyDown);
+      };
+    }
+  }, [hasActiveModal]);
+
   const handleCreateLocation = async (e: React.FormEvent) => {
     e.preventDefault();
     try {

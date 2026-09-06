@@ -1,8 +1,9 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { prisma } from './db';
-import { config } from './config';
-import { Role } from '@prisma/client';
+import { PrismaClient, Role } from '@prisma/client';
+import { config } from '../src/config';
+
+const prisma = new PrismaClient({ log: [] });
 
 async function testSprint1() {
   console.log('🧪 Starting Sprint 1 Automated Verification...');
@@ -53,7 +54,6 @@ async function testSprint1() {
   console.log('✅ Staff 2 role and location assignment verified:', staff2LocCodes);
 
   // 4. Verify RBAC Location Enforcement Logic
-  // A staff member attempting to act on STORE-01 when they are only assigned to WH-MAIN and WH-NORTH
   const canStaff1AccessStore01 = staff1.locations.some((l) => l.location.code === 'STORE-01');
   if (canStaff1AccessStore01) {
     throw new Error('Security Breach: Staff 1 should NOT have access to STORE-01!');

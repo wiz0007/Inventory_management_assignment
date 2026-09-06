@@ -10,7 +10,10 @@
     "prisma:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
     "prisma:studio": "prisma studio",
-    "seed": "tsx prisma/seed.ts"
+    "seed": "tsx prisma/seed.ts",
+    "test": "tsx tests/test-sprint1.ts && tsx tests/test-sprint2.ts",
+    "test:sprint1": "tsx tests/test-sprint1.ts",
+    "test:sprint2": "tsx tests/test-sprint2.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

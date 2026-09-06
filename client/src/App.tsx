@@ -36,7 +36,7 @@ const AppContent: React.FC = () => {
               <LayoutDashboard size={48} color="var(--accent-primary)" style={{ margin: '0 auto 1rem auto' }} />
               <h2 style={{ fontSize: '1.5rem', fontWeight: 700 }}>Operational Dashboard</h2>
               <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem', fontSize: '0.9rem' }}>
-                Headline KPI cards, breakdown charts by location/category, and 8-week movement trends will be populated here in Sprint 6.
+                Operational KPI metrics, inventory valuation breakdown, and stock movement velocity trends.
               </p>
               <button onClick={() => setCurrentTab('items')} className="btn btn-primary" style={{ marginTop: '1.5rem' }}>
                 View Inventory Catalog
@@ -51,7 +51,7 @@ const AppContent: React.FC = () => {
               <ArrowLeftRight size={48} color="var(--accent-primary)" style={{ margin: '0 auto 1rem auto' }} />
               <h2 style={{ fontSize: '1.5rem', fontWeight: 700 }}>Append-Only Stock Ledger</h2>
               <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem', fontSize: '0.9rem' }}>
-                Receipts, issues, atomic transfers, and adjustments are coming up in Sprint 3!
+                Record warehouse receipts, stock issues, atomic inter-location transfers, and audit adjustments.
               </p>
             </div>
           </div>
@@ -63,7 +63,7 @@ const AppContent: React.FC = () => {
               <FileUp size={48} color="var(--accent-primary)" style={{ margin: '0 auto 1rem auto' }} />
               <h2 style={{ fontSize: '1.5rem', fontWeight: 700 }}>Bulk CSV Import & Export</h2>
               <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem', fontSize: '0.9rem' }}>
-                Fault-tolerant item and receipt CSV imports with per-row failure isolation coming in Sprint 5!
+                Bulk import and export inventory items and receipts via CSV format with row-level validation.
               </p>
             </div>
           </div>
@@ -75,7 +75,7 @@ const AppContent: React.FC = () => {
               <Bell size={48} color="var(--accent-primary)" style={{ margin: '0 auto 1rem auto' }} />
               <h2 style={{ fontSize: '1.5rem', fontWeight: 700 }}>Low-Stock Alerts</h2>
               <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem', fontSize: '0.9rem' }}>
-                Real-time low stock monitoring with dismissal and re-arming engine coming in Sprint 5!
+                Threshold alerts for low stock levels with automated notifications and re-arming triggers.
               </p>
             </div>
           </div>

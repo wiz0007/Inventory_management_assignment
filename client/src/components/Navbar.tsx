@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { 
   Boxes, 
@@ -23,6 +23,43 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, lowSt
   const { user, logout, login } = useAuth();
   const [showSwitchMenu, setShowSwitchMenu] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const switchMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    if (!showSwitchMenu) return;
+
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      if (switchMenuRef.current && !switchMenuRef.current.contains(event.target as Node)) {
+        setShowSwitchMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [showSwitchMenu]);
+
+  // Keyboard Escape listener for dropdown and mobile drawer
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowSwitchMenu(false);
+        setMobileMenuOpen(false);
+      }
+    };
+
+    if (showSwitchMenu || mobileMenuOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+      return () => {
+        window.removeEventListener('keydown', handleKeyDown);
+      };
+    }
+  }, [showSwitchMenu, mobileMenuOpen]);
 
   const demoAccounts = [
     { name: 'Elena Rostova', role: 'MANAGER', email: 'manager@distributor.com', pass: 'Manager123!', label: 'Manager (Full Global Access)' },
@@ -44,9 +81,9 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, lowSt
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'items', label: 'Inventory', icon: Boxes },
-    { id: 'movements', label: 'Ledger & Movements', icon: ArrowLeftRight },
-    { id: 'locations', label: 'Locations & Staff', icon: MapPin },
-    { id: 'import-export', label: 'CSV Import/Export', icon: FileUp },
+    { id: 'movements', label: 'Ledger', icon: ArrowLeftRight },
+    { id: 'locations', label: 'Locations', icon: MapPin },
+    { id: 'import-export', label: 'CSV Data', icon: FileUp },
     { id: 'alerts', label: 'Low Stock', icon: Bell, badge: lowStockCount },
   ];
 
@@ -81,10 +118,10 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, lowSt
             <Boxes size={22} color="#fff" />
           </div>
           <div>
-            <div style={{ fontWeight: 800, fontSize: '1.05rem', letterSpacing: '-0.02em', background: 'linear-gradient(to right, #fff, #94a3b8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            <div className="nav-logo-title" style={{ fontWeight: 800, fontSize: '1.05rem', letterSpacing: '-0.02em', background: 'linear-gradient(to right, #fff, #94a3b8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
               StockPulse
             </div>
-            <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', letterSpacing: '0.04em', textTransform: 'uppercase', fontWeight: 600 }}>
+            <div className="nav-logo-subtitle" style={{ fontSize: '0.65rem', color: 'var(--text-muted)', letterSpacing: '0.04em', textTransform: 'uppercase', fontWeight: 600 }}>
               Audit Stock Ledger
             </div>
           </div>
@@ -125,7 +162,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, lowSt
         {/* Desktop User Profile & Switcher */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
           {user && (
-            <div style={{ position: 'relative' }}>
+            <div ref={switchMenuRef} className="nav-desktop-profile" style={{ position: 'relative' }}>
               <button 
                 onClick={() => setShowSwitchMenu(!showSwitchMenu)}
                 style={{
@@ -142,8 +179,8 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, lowSt
                 }}
               >
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <span style={{ fontWeight: 600, fontSize: '0.8rem', maxWidth: 110, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', minWidth: 0 }}>
+                    <span className="nav-user-name" style={{ fontWeight: 600, fontSize: '0.8rem', maxWidth: 110, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {user.name}
                     </span>
                     <span className={user.role === 'MANAGER' ? 'badge badge-manager' : 'badge badge-staff'}>
@@ -151,7 +188,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, lowSt
                     </span>
                   </div>
                 </div>
-                <ChevronDown size={14} color="var(--text-muted)" />
+                <ChevronDown size={14} color="var(--text-muted)" style={{ flexShrink: 0 }} />
               </button>
 
               {/* Fast Switch Dropdown */}
@@ -160,7 +197,8 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, lowSt
                   position: 'absolute',
                   right: 0,
                   top: '120%',
-                  width: 300,
+                  width: 280,
+                  maxWidth: '90vw',
                   background: 'var(--bg-surface)',
                   border: '1px solid var(--border-subtle)',
                   borderRadius: 12,
@@ -198,10 +236,10 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, lowSt
             </div>
           )}
 
-          {/* Desktop Logout Button */}
+          {/* Desktop Logout Button (Hidden on <= 1024px, drawer has Sign Out) */}
           <button 
             onClick={logout} 
-            className="btn btn-secondary" 
+            className="btn btn-secondary nav-desktop-logout" 
             title="Log out"
             style={{ padding: '0.45rem 0.65rem', borderRadius: 8 }}
           >
@@ -235,6 +273,28 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, lowSt
             boxShadow: '0 20px 40px rgba(0,0,0,0.6)',
           }}
         >
+          {/* Active User Card on Mobile */}
+          {user && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '0.75rem 1rem',
+              background: 'var(--bg-surface-elevated)',
+              borderRadius: 10,
+              border: '1px solid var(--border-subtle)',
+              marginBottom: '0.25rem'
+            }}>
+              <div>
+                <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-primary)' }}>{user.name}</div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{user.email}</div>
+              </div>
+              <span className={user.role === 'MANAGER' ? 'badge badge-manager' : 'badge badge-staff'}>
+                {user.role}
+              </span>
+            </div>
+          )}
+
           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, paddingLeft: '0.5rem', marginBottom: '0.25rem' }}>
             Navigation
           </div>

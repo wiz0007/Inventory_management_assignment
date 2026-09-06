@@ -1,5 +1,7 @@
-import { prisma } from './db';
-import { TimelineEventType, Role } from '@prisma/client';
+import { PrismaClient, TimelineEventType } from '@prisma/client';
+
+// Use dedicated silent logger instance for test execution so expected constraint checks don't dump false-positive errors
+const prisma = new PrismaClient({ log: [] });
 
 async function runSprint2Tests() {
   console.log('🧪 Starting Sprint 2 Automated Verification...');
@@ -52,7 +54,7 @@ async function runSprint2Tests() {
           categoryId: category.id,
         },
       });
-    } catch (err: any) {
+    } catch {
       duplicateCaught = true;
     }
     if (!duplicateCaught) {
