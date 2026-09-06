@@ -3,6 +3,10 @@ import cors from 'cors';
 import { config } from './config';
 import { errorHandler } from './middleware/error';
 
+import cookieParser from 'cookie-parser';
+import { authRouter } from './routes/auth.routes';
+import { locationsRouter } from './routes/locations.routes';
+
 const app = express();
 
 app.use(cors({
@@ -10,6 +14,7 @@ app.use(cors({
   credentials: true,
 }));
 
+app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -17,6 +22,10 @@ app.use(express.urlencoded({ extended: true }));
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+// API Routes
+app.use('/api/auth', authRouter);
+app.use('/api/locations', locationsRouter);
 
 // Global error handler
 app.use(errorHandler);
