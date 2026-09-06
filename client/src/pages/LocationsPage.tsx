@@ -111,10 +111,10 @@ export const LocationsPage: React.FC = () => {
   };
 
   return (
-    <div style={{ maxWidth: 1400, margin: '0 auto', padding: '2rem 1.5rem' }}>
+    <div className="page-container">
       
       {/* Page Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
+      <div className="responsive-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h1 style={{ fontSize: '1.75rem', fontWeight: 800, letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <Building2 size={26} color="var(--accent-primary)" />
@@ -141,7 +141,7 @@ export const LocationsPage: React.FC = () => {
       )}
 
       {/* RBAC Info Banner */}
-      <div className="glass-panel" style={{ padding: '1rem 1.25rem', marginBottom: '2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+      <div className="glass-panel responsive-banner" style={{ padding: '1rem 1.25rem', marginBottom: '2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <ShieldAlert size={20} color={isManager ? '#c084fc' : '#34d399'} />
           <div>
@@ -167,7 +167,7 @@ export const LocationsPage: React.FC = () => {
           Loading locations...
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '1.5rem' }}>
+        <div className="responsive-cards-grid">
           {locations.map((loc) => (
             <div key={loc.id} className="glass-panel card-hover" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
               <div>
