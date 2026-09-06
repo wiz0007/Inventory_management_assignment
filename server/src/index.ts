@@ -6,6 +6,8 @@ import { errorHandler } from './middleware/error';
 import cookieParser from 'cookie-parser';
 import { authRouter } from './routes/auth.routes';
 import { locationsRouter } from './routes/locations.routes';
+import { categoriesRouter } from './routes/categories.routes';
+import { itemsRouter } from './routes/items.routes';
 
 const app = express();
 
@@ -26,6 +28,8 @@ app.get('/api/health', (req, res) => {
 // API Routes
 app.use('/api/auth', authRouter);
 app.use('/api/locations', locationsRouter);
+app.use('/api/categories', categoriesRouter);
+app.use('/api/items', itemsRouter);
 
 // Global error handler
 app.use(errorHandler);

@@ -36,15 +36,15 @@ Mark each honestly. Partial is fine — say what is partial.
 | # | Goal | Status | Notes |
 |---|------|--------|-------|
 | 1 | Accounts and roles | Done | Manager vs Staff roles enforced on the server via JWT and RBAC middleware |
-| 2 | Items | In progress | Schema ready, building in Sprint 2 |
+| 2 | Items | Done | Unique SKU, Category taxonomy, UOM, Reorder thresholds, and soft archiving |
 | 3 | Stock movements | In progress | Schema ready, building in Sprint 3 |
 | 4 | The stock ledger | In progress | Schema ready, building in Sprint 3 |
 | 5 | Location assignment | Done | Many-to-many staff-location assignments, manager-only assignment control |
-| 6 | | | |
-| 7 | | | |
-| 8 | | | |
-| 9 | | | |
-| 10 | | | |
+| 6 | Search, filtering and pagination | In progress | Basic text search & category filters active; full SQL pagination in Sprint 4 |
+| 7 | Bulk import and export | Planned | CSV engine scheduled for Sprint 5 |
+| 8 | Visualizations | Planned | Dashboard & 8-week movement charts scheduled for Sprint 6 |
+| 9 | Audit timeline | Done | Immutable append-only audit trail recording item creation, attribute diffs, and staff notes |
+| 10 | Low-stock alerts | Planned | Multi-location reorder evaluation with re-arming state machine in Sprint 5 |
 
 ## How much time did you actually spend?
 

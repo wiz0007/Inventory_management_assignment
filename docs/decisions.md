@@ -62,4 +62,10 @@ Log the decisions that actually shaped this codebase — the ones where a real a
   1. **IPv4 Cloud Compatibility:** Modern Supabase direct endpoints resolve exclusively to IPv6 addresses. Free-tier cloud runtimes like Render operate on IPv4-only networks and cannot route to IPv6 hosts. Routing traffic through the Supabase connection pooler provides reliable dual-stack IPv4/IPv6 reachability.
   2. **Security & Information Disclosure (CWE-209):** Forwarding raw ORM and driver exceptions (`Invalid prisma.user.findUnique() invocation...`, hostnames, ports) directly into API response bodies creates a severe security vulnerability that leaks internal infrastructure topology and ORM structures to attackers, while confusing users. The global error handler now masks internal 500/DB errors into clean user messages while logging full diagnostic traces to server logs.
 
+---
 
+## Decision 8: Immutable Audit Timeline with Append-Only Diff Ledger (Requirement 9)
+
+- **Chose:** An append-only event entity `audit_timeline_events` recording discrete event types (`CREATED`, `FIELD_CHANGE`, `NOTE`), actor ID, and exact prior and new values (`fieldName`, `oldValue`, `newValue`).
+- **Rejected:** Storing a mutable change log or relying on generic `updatedAt` table columns.
+- **Why:** Requirement 9 explicitly dictates an immutable, chronological timeline for every item that records every modification over time. Mutable audit records violate compliance and accounting integrity. Our structure captures granular field-level diffs automatically on every item update transaction, while providing warehouse staff with an append-only notes stream without giving staff permissions to modify item attributes.
