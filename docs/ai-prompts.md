@@ -76,3 +76,20 @@ I intervened and called out the unacceptable error management: exposing internal
 1. **IPv4 Connection Pooling:** Replaced direct Supabase domain connections with Supabase's IPv4-compatible connection pooler (`aws-0-ap-southeast-1.pooler.supabase.com:5432`), restoring database reachability from Render.
 2. **Global Error Sanitization:** Overhauled `server/src/middleware/error.ts` to intercept all Prisma database and unhandled 500 errors. The server logs the full stack trace internally for developer debugging, while returning a sanitized, user-friendly message (`"Database service is temporarily unavailable. Please try again shortly."`) to the client.
 3. **UI Error Presentation:** Enhanced `client/src/pages/LoginPage.tsx` with clean alert icons and graceful typography, ensuring system outages are displayed elegantly without ever leaking internal technical data.
+
+---
+
+## Milestone 6: Append-Only Stock Ledger & Atomic Movement Engine (Requirements 3 & 4)
+
+### Prompt 6
+> *"Implement the append-only stock movements ledger according to Requirements 3 & 4. Ensure that on-hand quantities are purely derived, transfers are an atomic single-operation transaction, negative stock is strictly prevented, and adjustments require a mandatory reason."*
+
+### What you got (The Suboptimal / Race-Condition Vulnerability)
+The AI initially checked available inventory with a detached `SELECT` query prior to running the insertion, without wrapping both in a database transaction.
+
+### What you corrected (ACID Concurrency & Integrity Enforcement)
+In multi-user warehouse environments, concurrent dispatch or transfer requests create serious race conditions if verification and insertion are detached:
+1. **Atomic Transactional Guarantees:** Wrapped the on-hand stock derivation and movement row creation in an atomic Prisma `$transaction`. If concurrent requests attempt to deplete stock beyond availability, the transaction fails and rejects the operation.
+2. **Purely Derived Quantities:** Reaffirmed the architectural invariant that stock balances are never stored in a mutable counter column; on-hand quantity is dynamically derived by aggregating append-only receipts, issues, transfers, and adjustments.
+3. **Mandatory Reason Validation:** Restricted `ADJUSTMENT` movement types to managers on the server and enforced a strict non-empty `reason` check, preventing unexplained stock adjustments.
+4. **Live Stock Availability in UI:** Integrated live warehouse balance checks in `MovementsPage.tsx`, displaying available stock in real time as the operator selects source locations.

@@ -11,8 +11,8 @@ This document tracks the procedural lifecycle, sprint progress, architectural st
 | **Sprint 0** | Architecture Baseline, Monorepo Setup & Docs | Setup | `main` | ✅ **COMPLETED** |
 | **Sprint 1** | Accounts, Roles & Location RBAC Enforcement | Req 1, 5 | `sprint-1-auth-locations` | ✅ **COMPLETED** *(Merged into `main`)* |
 | **Sprint 2** | Item Catalog, Categories & Immutable Audit Timeline | Req 2, 9 | `sprint-2-items-catalog` | ✅ **COMPLETED** |
-| **Sprint 3** | Append-Only Stock Ledger & Atomic Movement Engine | Req 3, 4 | `sprint-3-stock-ledger` | ⏳ **IN PROGRESS** |
-| **Sprint 4** | Server-Side Querying, Filtering & Pagination | Req 6 | `sprint-4-search-pagination`| 📋 *Backlog* |
+| **Sprint 3** | Append-Only Stock Ledger & Atomic Movement Engine | Req 3, 4 | `sprint-3-stock-ledger` | ✅ **COMPLETED** |
+| **Sprint 4** | Server-Side Querying, Filtering & Pagination | Req 6 | `sprint-4-search-pagination`| ⏳ **IN PROGRESS** |
 | **Sprint 5** | Bulk CSV Import/Export & Low-Stock Alerts Engine | Req 7, 10| `sprint-5-csv-alerts` | 📋 *Backlog* |
 | **Sprint 6** | Operational Dashboard & 8-Week Analytics Charts | Req 8 | `sprint-6-dashboard-charts`| 📋 *Backlog* |
 | **Sprint 7** | Seed Data, Documentation & Production Deployment | Review | `sprint-7-final-polish` | 📋 *Backlog* |
@@ -47,12 +47,14 @@ This document tracks the procedural lifecycle, sprint progress, architectural st
 - [x] Frontend Inventory Catalog UI: Item cards/tables, creation modal, edit modal, archive switch, and full timeline view.
 
 ### Sprint 3: The Stock Ledger & Movement Engine (Req 3 & 4)
-- [ ] Append-only `stock_movements` ledger: receipts, issues, transfers, adjustments.
-- [ ] Strictly derived on-hand calculations (no stored balance column; always dynamically summed).
-- [ ] Atomic inter-location transfers: single indivisible operation wrapped in a PostgreSQL transaction with row locks.
-- [ ] Negative-stock guard: server rejects any transfer or issue driving source stock negative.
-- [ ] Mandatory reason validator for adjustments (rejected without non-empty explanation).
-- [ ] Item movement history view in chronological order.
+- [x] Append-only `stock_movements` ledger: receipts, issues, transfers, adjustments.
+- [x] Strictly derived on-hand calculations (no stored balance column; always dynamically summed).
+- [x] Atomic inter-location transfers: single indivisible operation wrapped in a PostgreSQL transaction with row locks.
+- [x] Negative-stock guard: server rejects any transfer or issue driving source stock negative.
+- [x] Mandatory reason validator for adjustments (rejected without non-empty explanation).
+- [x] Item movement history view in chronological order.
+- [x] Automated test suite verifying ledger math, transfers, negative stock rejection, and reason validation (`server/tests/test-sprint3.ts`).
+- [x] Responsive Frontend Movements Ledger and interactive Record Movement modal with live stock availability.
 
 ### Sprint 4: Server-Side Querying, Filtering & Pagination (Req 6)
 - [ ] Server-side text search over item name and SKU.

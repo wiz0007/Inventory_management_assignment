@@ -13,7 +13,10 @@ import {
   X, 
   Send, 
   Layers, 
-  Trash2 
+  Trash2,
+  ArrowLeftRight,
+  Building2,
+  Package
 } from 'lucide-react';
 
 interface Category {
@@ -49,6 +52,8 @@ interface Item {
   reorderLevel: number;
   categoryId: string;
   isArchived: boolean;
+  totalOnHand?: number;
+  isLowStock?: boolean;
   createdAt: string;
   updatedAt: string;
   category: Category;
@@ -78,6 +83,9 @@ export const ItemsPage: React.FC = () => {
   const [timelineItem, setTimelineItem] = useState<Item | null>(null);
   const [timelineEvents, setTimelineEvents] = useState<ItemTimelineEvent[]>([]);
   const [loadingTimeline, setLoadingTimeline] = useState(false);
+  const [detailTab, setDetailTab] = useState<'TIMELINE' | 'MOVEMENTS' | 'LOCATIONS'>('TIMELINE');
+  const [itemStockLocations, setItemStockLocations] = useState<any[]>([]);
+  const [itemMovements, setItemMovements] = useState<any[]>([]);
 
   // Form States
   const [newItemSku, setNewItemSku] = useState('');
@@ -282,13 +290,20 @@ export const ItemsPage: React.FC = () => {
     }
   };
 
-  // Open Timeline Drawer
+  // Open Timeline & Item Ledger Drawer
   const openTimeline = async (item: Item) => {
     setTimelineItem(item);
+    setDetailTab('TIMELINE');
     setLoadingTimeline(true);
     try {
-      const res = await apiFetch<{ timeline: ItemTimelineEvent[] }>(`/items/${item.id}/timeline`);
-      setTimelineEvents(res.timeline);
+      const [res, stockRes, movRes] = await Promise.all([
+        apiFetch<{ timeline: ItemTimelineEvent[] }>(`/items/${item.id}/timeline`),
+        fetch(`/api/movements/on-hand/${item.id}`, { credentials: 'include' }).then((r) => r.json()).catch(() => ({ locations: [] })),
+        fetch(`/api/movements/item/${item.id}`, { credentials: 'include' }).then((r) => r.json()).catch(() => ({ movements: [] })),
+      ]);
+      setTimelineEvents(res.timeline || []);
+      setItemStockLocations(stockRes.locations || []);
+      setItemMovements(movRes.movements || []);
     } catch (err: any) {
       console.error('Failed to load timeline:', err);
     } finally {
@@ -577,10 +592,13 @@ export const ItemsPage: React.FC = () => {
           {displayedItems.map((item) => (
             <div 
               key={item.id} 
-              className="glass-panel item-card"
+              className="glass-panel item-card card-hover"
+              onClick={() => openTimeline(item)}
               style={{
+                cursor: 'pointer',
                 opacity: item.isArchived ? 0.75 : 1,
                 border: item.isArchived ? '1px dashed rgba(148, 163, 184, 0.3)' : undefined,
+                transition: 'transform 0.15s ease, border-color 0.15s ease',
               }}
             >
               {/* Card Header */}
@@ -625,10 +643,10 @@ export const ItemsPage: React.FC = () => {
                 </p>
 
                 {/* Specs Box */}
-                <div className="item-spec-box">
+                <div className="item-spec-box" style={{ gridTemplateColumns: '1fr 1fr 1.2fr' }}>
                   <div>
                     <div className="item-spec-label">
-                      Unit of Measure
+                      UOM
                     </div>
                     <div className="item-spec-value">
                       {item.uom}
@@ -637,30 +655,50 @@ export const ItemsPage: React.FC = () => {
 
                   <div>
                     <div className="item-spec-label">
-                      Reorder Threshold
+                      Reorder
                     </div>
                     <div className="item-spec-value" style={{ color: '#f59e0b' }}>
-                      {item.reorderLevel} {item.uom}
+                      {item.reorderLevel}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="item-spec-label">
+                      On Hand
+                    </div>
+                    <div className="item-spec-value" style={{ 
+                      color: item.totalOnHand !== undefined 
+                        ? (item.totalOnHand <= item.reorderLevel ? '#f87171' : '#34d399')
+                        : 'var(--text-primary)',
+                      fontWeight: 700
+                    }}>
+                      {item.totalOnHand ?? 0} {item.uom}
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Card Footer Actions */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--border-subtle)', paddingTop: '0.75rem', gap: '0.4rem' }}>
+              <div 
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--border-subtle)', paddingTop: '0.75rem', gap: '0.4rem' }}
+                onClick={(e) => e.stopPropagation()}
+              >
                 <button
                   onClick={() => openTimeline(item)}
                   className="btn btn-secondary"
                   style={{ fontSize: '0.775rem', padding: '0.35rem 0.65rem', gap: '0.35rem' }}
                 >
                   <History size={14} color="var(--accent-primary)" />
-                  Timeline Log
+                  Details & Stock
                 </button>
 
                 {isManager && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                     <button
-                      onClick={() => handleOpenEdit(item)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenEdit(item);
+                      }}
                       className="btn btn-secondary"
                       title="Edit item specifications"
                       style={{ padding: '0.35rem 0.55rem' }}
@@ -669,7 +707,10 @@ export const ItemsPage: React.FC = () => {
                     </button>
 
                     <button
-                      onClick={() => handleToggleArchive(item)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleArchive(item);
+                      }}
                       className="btn btn-secondary"
                       title={item.isArchived ? 'Restore item to active catalog' : 'Archive item'}
                       style={{ padding: '0.35rem 0.55rem', color: item.isArchived ? '#34d399' : '#f87171' }}
@@ -999,9 +1040,9 @@ export const ItemsPage: React.FC = () => {
             {/* Header */}
             <div style={{ borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.75rem', marginBottom: '0.75rem', minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                <History size={20} color="var(--accent-primary)" />
-                <h2 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0 }}>
-                  Immutable Audit Timeline
+                <Package size={20} color="var(--accent-primary)" />
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>
+                  {timelineItem.name}
                 </h2>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.35rem', flexWrap: 'wrap', minWidth: 0 }}>
@@ -1009,135 +1050,262 @@ export const ItemsPage: React.FC = () => {
                   {timelineItem.sku}
                 </span>
                 <span style={{ color: 'var(--text-muted)' }}>•</span>
-                <span style={{ fontWeight: 600 }}>{timelineItem.name}</span>
-                <span style={{ color: 'var(--text-muted)' }}>•</span>
                 <span className="badge" style={{ background: 'var(--bg-surface-elevated)' }}>
                   {timelineItem.category.name}
                 </span>
+                <span style={{ color: 'var(--text-muted)' }}>•</span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                  Reorder: <strong style={{ color: '#f59e0b' }}>{timelineItem.reorderLevel} {timelineItem.uom}</strong>
+                </span>
+              </div>
+
+              {/* Sub-Tabs */}
+              <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.75rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setDetailTab('TIMELINE')}
+                  className={`btn ${detailTab === 'TIMELINE' ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ fontSize: '0.75rem', padding: '0.35rem 0.75rem' }}
+                >
+                  <History size={14} />
+                  <span>Audit Timeline</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDetailTab('LOCATIONS')}
+                  className={`btn ${detailTab === 'LOCATIONS' ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ fontSize: '0.75rem', padding: '0.35rem 0.75rem' }}
+                >
+                  <Building2 size={14} />
+                  <span>Warehouse Stock</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDetailTab('MOVEMENTS')}
+                  className={`btn ${detailTab === 'MOVEMENTS' ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ fontSize: '0.75rem', padding: '0.35rem 0.75rem' }}
+                >
+                  <ArrowLeftRight size={14} />
+                  <span>Movement Ledger ({itemMovements.length})</span>
+                </button>
               </div>
             </div>
 
-            {/* Add Note Input Area (Available for both Manager and Staff) */}
-            <form onSubmit={handleAddNote} style={{ marginBottom: '1rem', width: '100%', minWidth: 0 }}>
-              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', minWidth: 0 }}>
-                <input
-                  type="text"
-                  value={newNote}
-                  onChange={(e) => setNewNote(e.target.value)}
-                  placeholder="Record an inspection log or note..."
-                  className="form-input"
-                  style={{ fontSize: '0.85rem', flex: '1 1 180px', minWidth: 0 }}
-                />
-                <button 
-                  type="submit" 
-                  disabled={addingNote || !newNote.trim()} 
-                  className="btn btn-primary"
-                  style={{ padding: '0.5rem 0.9rem', fontSize: '0.85rem', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.35rem' }}
-                >
-                  <Send size={15} />
-                  {addingNote ? 'Saving...' : 'Add Note'}
-                </button>
-              </div>
-            </form>
+            {/* TAB 1: AUDIT TIMELINE */}
+            {detailTab === 'TIMELINE' && (
+              <>
+                {/* Add Note Input Area (Available for both Manager and Staff) */}
+                <form onSubmit={handleAddNote} style={{ marginBottom: '1rem', width: '100%', minWidth: 0 }}>
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', minWidth: 0 }}>
+                    <input
+                      type="text"
+                      value={newNote}
+                      onChange={(e) => setNewNote(e.target.value)}
+                      placeholder="Record an inspection log or note..."
+                      className="form-input"
+                      style={{ fontSize: '0.85rem', flex: '1 1 180px', minWidth: 0 }}
+                    />
+                    <button 
+                      type="submit" 
+                      disabled={addingNote || !newNote.trim()} 
+                      className="btn btn-primary"
+                      style={{ padding: '0.5rem 0.9rem', fontSize: '0.85rem', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                    >
+                      <Send size={15} />
+                      {addingNote ? 'Saving...' : 'Add Note'}
+                    </button>
+                  </div>
+                </form>
 
-            {/* Timeline Stream (Scrollable with hidden horizontal overflow) */}
-            <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', paddingRight: '0.25rem', width: '100%', minWidth: 0 }}>
-              {loadingTimeline ? (
-                <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
-                  Loading timeline history...
-                </div>
-              ) : timelineEvents.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
-                  No timeline events found.
-                </div>
-              ) : (
-                <div className="timeline-stream-container" style={{ position: 'relative', paddingLeft: '1.25rem', borderLeft: '2px solid rgba(99, 102, 241, 0.25)', marginLeft: '0.5rem', minWidth: 0 }}>
-                  {timelineEvents.map((ev) => {
-                    const isCreated = ev.eventType === 'CREATED';
-                    const isFieldChange = ev.eventType === 'FIELD_CHANGE';
-                    const isNote = ev.eventType === 'NOTE';
-                    const dateStr = new Date(ev.createdAt).toLocaleString();
+                {/* Timeline Stream */}
+                <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', paddingRight: '0.25rem', width: '100%', minWidth: 0 }}>
+                  {loadingTimeline ? (
+                    <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                      Loading timeline history...
+                    </div>
+                  ) : timelineEvents.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                      No timeline events found.
+                    </div>
+                  ) : (
+                    <div className="timeline-stream-container" style={{ position: 'relative', paddingLeft: '1.25rem', borderLeft: '2px solid rgba(99, 102, 241, 0.25)', marginLeft: '0.5rem', minWidth: 0 }}>
+                      {timelineEvents.map((ev) => {
+                        const isCreated = ev.eventType === 'CREATED';
+                        const isFieldChange = ev.eventType === 'FIELD_CHANGE';
+                        const isNote = ev.eventType === 'NOTE';
+                        const dateStr = new Date(ev.createdAt).toLocaleString();
 
-                    return (
-                      <div key={ev.id} style={{ position: 'relative', marginBottom: '1rem', minWidth: 0 }}>
-                        {/* Dot indicator */}
-                        <div style={{
-                          position: 'absolute',
-                          left: '-1.65rem',
-                          top: '0.25rem',
-                          width: 12,
-                          height: 12,
-                          borderRadius: '50%',
-                          background: isCreated ? '#10b981' : isFieldChange ? '#6366f1' : '#f59e0b',
-                          boxShadow: `0 0 8px ${isCreated ? 'rgba(16, 185, 129, 0.5)' : isFieldChange ? 'rgba(99, 102, 241, 0.5)' : 'rgba(245, 158, 11, 0.5)'}`,
-                          border: '2px solid var(--bg-surface)'
-                        }} />
+                        return (
+                          <div key={ev.id} style={{ position: 'relative', marginBottom: '1rem', minWidth: 0 }}>
+                            <div style={{
+                              position: 'absolute',
+                              left: '-1.65rem',
+                              top: '0.25rem',
+                              width: 12,
+                              height: 12,
+                              borderRadius: '50%',
+                              background: isCreated ? '#10b981' : isFieldChange ? '#6366f1' : '#f59e0b',
+                              boxShadow: `0 0 8px ${isCreated ? 'rgba(16, 185, 129, 0.5)' : isFieldChange ? 'rgba(99, 102, 241, 0.5)' : 'rgba(245, 158, 11, 0.5)'}`,
+                              border: '2px solid var(--bg-surface)'
+                            }} />
 
-                        {/* Event Card */}
-                        <div className="timeline-event-card">
-                          {/* Card Header (Two-row responsive hierarchy: Badges on Row 1, Full User Name on Row 2) */}
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', marginBottom: '0.4rem', minWidth: 0 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.35rem', minWidth: 0 }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap', minWidth: 0 }}>
-                                <span style={{
-                                  fontSize: '0.68rem',
-                                  fontWeight: 700,
-                                  textTransform: 'uppercase',
-                                  padding: '0.15rem 0.4rem',
-                                  borderRadius: 4,
-                                  background: isCreated ? 'rgba(16, 185, 129, 0.2)' : isFieldChange ? 'rgba(99, 102, 241, 0.2)' : 'rgba(245, 158, 11, 0.2)',
-                                  color: isCreated ? '#34d399' : isFieldChange ? '#818cf8' : '#fbbf24'
-                                }}>
-                                  {ev.eventType}
-                                </span>
-                                <span className={ev.user.role === 'MANAGER' ? 'badge badge-manager' : 'badge badge-staff'} style={{ fontSize: '0.65rem', padding: '0.05rem 0.35rem' }}>
-                                  {ev.user.role}
-                                </span>
+                            <div className="timeline-event-card">
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', marginBottom: '0.4rem', minWidth: 0 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.35rem', minWidth: 0 }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap', minWidth: 0 }}>
+                                    <span style={{
+                                      fontSize: '0.68rem',
+                                      fontWeight: 700,
+                                      textTransform: 'uppercase',
+                                      padding: '0.15rem 0.4rem',
+                                      borderRadius: 4,
+                                      background: isCreated ? 'rgba(16, 185, 129, 0.2)' : isFieldChange ? 'rgba(99, 102, 241, 0.2)' : 'rgba(245, 158, 11, 0.2)',
+                                      color: isCreated ? '#34d399' : isFieldChange ? '#818cf8' : '#fbbf24'
+                                    }}>
+                                      {ev.eventType}
+                                    </span>
+                                    <span className={ev.user.role === 'MANAGER' ? 'badge badge-manager' : 'badge badge-staff'} style={{ fontSize: '0.65rem', padding: '0.05rem 0.35rem' }}>
+                                      {ev.user.role}
+                                    </span>
+                                  </div>
+
+                                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                                    {dateStr}
+                                  </span>
+                                </div>
+
+                                <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)', wordBreak: 'break-word', minWidth: 0 }}>
+                                  {ev.user.name}
+                                </div>
                               </div>
 
-                              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                                {dateStr}
-                              </span>
-                            </div>
+                              {isFieldChange && (
+                                <div style={{ fontSize: '0.825rem', color: 'var(--text-primary)', marginTop: '0.25rem', minWidth: 0 }}>
+                                  Modified field <code style={{ background: 'rgba(255,255,255,0.08)', padding: '0.1rem 0.3rem', borderRadius: 4 }}>{ev.fieldName}</code>:
+                                  <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.35rem', fontSize: '0.8rem' }}>
+                                    <span style={{ textDecoration: 'line-through', color: '#f87171' }}>
+                                      {ev.oldValue || '(empty)'}
+                                    </span>
+                                    <span style={{ color: 'var(--text-muted)' }}>➔</span>
+                                    <span style={{ color: '#34d399', fontWeight: 600 }}>
+                                      {ev.newValue || '(empty)'}
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
 
-                            <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)', wordBreak: 'break-word', minWidth: 0 }}>
-                              {ev.user.name}
+                              {(isCreated || isNote) && (
+                                <div style={{ fontSize: '0.825rem', color: 'var(--text-primary)', marginTop: '0.2rem', lineHeight: 1.4, wordBreak: 'break-word' }}>
+                                  {ev.noteText}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* TAB 2: WAREHOUSE STOCK BREAKDOWN */}
+            {detailTab === 'LOCATIONS' && (
+              <div style={{ flex: 1, overflowY: 'auto', padding: '0.5rem 0' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem', marginBottom: '1.25rem' }}>
+                  {itemStockLocations.map((loc: any) => (
+                    <div key={loc.locationId} className="glass-panel" style={{ padding: '1rem', background: 'rgba(255, 255, 255, 0.02)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.4rem' }}>
+                        <Building2 size={16} color="var(--accent-primary)" />
+                        <span style={{ fontSize: '0.75rem', fontWeight: 700, fontFamily: 'monospace', color: 'var(--accent-secondary)' }}>
+                          [{loc.locationCode}]
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
+                        {loc.locationName}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem' }}>
+                        <span style={{ fontSize: '1.4rem', fontWeight: 800, color: loc.onHand > 0 ? '#34d399' : 'var(--text-muted)' }}>
+                          {loc.onHand}
+                        </span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                          {timelineItem.uom} on hand
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="glass-panel" style={{ padding: '1rem', background: 'rgba(99, 102, 241, 0.08)', border: '1px solid rgba(99, 102, 241, 0.25)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Company-Wide On Hand</div>
+                    <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#f8fafc' }}>
+                      {itemStockLocations.reduce((sum: number, l: any) => sum + (l.onHand || 0), 0)} {timelineItem.uom}
+                    </div>
+                  </div>
+                  <div>
+                    <span className="badge" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
+                      Reorder Threshold: {timelineItem.reorderLevel} {timelineItem.uom}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 3: MOVEMENT LEDGER */}
+            {detailTab === 'MOVEMENTS' && (
+              <div style={{ flex: 1, overflowY: 'auto', padding: '0.5rem 0' }}>
+                {itemMovements.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)' }}>
+                    No movement records found for this item.
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                    {itemMovements.map((m: any) => {
+                      const dateStr = new Date(m.createdAt).toLocaleString();
+                      return (
+                        <div key={m.id} className="glass-panel" style={{ padding: '0.85rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                            {m.type === 'RECEIPT' && <span className="badge badge-receipt">+ RECEIPT</span>}
+                            {m.type === 'ISSUE' && <span className="badge badge-issue">- ISSUE</span>}
+                            {m.type === 'TRANSFER' && <span className="badge badge-transfer">⇄ TRANSFER</span>}
+                            {m.type === 'ADJUSTMENT' && <span className="badge badge-adjustment">⚡ ADJUST</span>}
+
+                            <div>
+                              <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+                                {m.type === 'RECEIPT' && `Received into ${m.destinationLocation?.name}`}
+                                {m.type === 'ISSUE' && `Issued from ${m.sourceLocation?.name}`}
+                                {m.type === 'TRANSFER' && `${m.sourceLocation?.code} → ${m.destinationLocation?.code}`}
+                                {m.type === 'ADJUSTMENT' && `Adjustment at ${m.sourceLocation ? m.sourceLocation.name : m.destinationLocation?.name}`}
+                              </div>
+                              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                                {dateStr} by {m.user?.name}
+                              </div>
                             </div>
                           </div>
 
-                          {/* Event Content */}
-                          {isFieldChange && (
-                            <div style={{ fontSize: '0.825rem', color: 'var(--text-primary)', marginTop: '0.25rem', minWidth: 0 }}>
-                              Modified field <code style={{ background: 'rgba(255,255,255,0.08)', padding: '0.1rem 0.3rem', borderRadius: 4 }}>{ev.fieldName}</code>:
-                              <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.35rem', fontSize: '0.8rem' }}>
-                                <span style={{ textDecoration: 'line-through', color: '#f87171' }}>
-                                  {ev.oldValue || '(empty)'}
-                                </span>
-                                <span style={{ color: 'var(--text-muted)' }}>➔</span>
-                                <span style={{ color: '#34d399', fontWeight: 600 }}>
-                                  {ev.newValue || '(empty)'}
-                                </span>
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontWeight: 700, fontSize: '0.95rem', color: m.type === 'RECEIPT' ? '#34d399' : m.type === 'ISSUE' ? '#fbbf24' : '#c084fc' }}>
+                              {m.type === 'RECEIPT' ? `+${m.quantity}` : m.type === 'ISSUE' ? `-${m.quantity}` : m.quantity} {timelineItem.uom}
+                            </div>
+                            {m.reason && (
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic', maxWidth: 200 }}>
+                                "{m.reason}"
                               </div>
-                            </div>
-                          )}
-
-                          {(isCreated || isNote) && (
-                            <div style={{ fontSize: '0.825rem', color: 'var(--text-primary)', marginTop: '0.2rem', lineHeight: 1.4, wordBreak: 'break-word' }}>
-                              {ev.noteText}
-                            </div>
-                          )}
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Footer */}
             <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '0.75rem', marginTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                Immutable Audit Log: Records cannot be altered or deleted.
+                Append-only ledger: Changes are immutable.
               </span>
               <button onClick={() => setTimelineItem(null)} className="btn btn-secondary" style={{ fontSize: '0.825rem' }}>
                 Close

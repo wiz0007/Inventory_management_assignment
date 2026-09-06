@@ -75,7 +75,34 @@ itemsRouter.get('/', async (req: AuthenticatedRequest, res: Response) => {
       orderBy: [{ isArchived: 'asc' }, { name: 'asc' }],
     });
 
-    res.json(items);
+    // Derive on-hand stock position from append-only movements for all items in 2 queries
+    const itemIds = items.map((it) => it.id);
+    const [incoming, outgoing] = await Promise.all([
+      prisma.stockMovement.groupBy({
+        by: ['itemId'],
+        where: { itemId: { in: itemIds }, destinationLocationId: { not: null } },
+        _sum: { quantity: true },
+      }),
+      prisma.stockMovement.groupBy({
+        by: ['itemId'],
+        where: { itemId: { in: itemIds }, sourceLocationId: { not: null } },
+        _sum: { quantity: true },
+      }),
+    ]);
+
+    const inMap = new Map(incoming.map((i) => [i.itemId, i._sum.quantity || 0]));
+    const outMap = new Map(outgoing.map((o) => [o.itemId, o._sum.quantity || 0]));
+
+    const itemsWithStock = items.map((item) => {
+      const onHand = (inMap.get(item.id) || 0) - (outMap.get(item.id) || 0);
+      return {
+        ...item,
+        totalOnHand: onHand,
+        isLowStock: onHand <= item.reorderLevel,
+      };
+    });
+
+    res.json(itemsWithStock);
   } catch (err: any) {
     res.status(500).json({ error: 'Failed to retrieve items.', details: err.message });
   }
@@ -83,7 +110,7 @@ itemsRouter.get('/', async (req: AuthenticatedRequest, res: Response) => {
 
 /**
  * GET /api/items/:id
- * Get single item with category and recent timeline
+ * Get single item with category, recent timeline, and derived stock position
  */
 itemsRouter.get('/:id', async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -107,7 +134,25 @@ itemsRouter.get('/:id', async (req: AuthenticatedRequest, res: Response) => {
       return res.status(404).json({ error: 'Item not found.' });
     }
 
-    res.json(item);
+    // Derive on-hand quantity for this item
+    const [incoming, outgoing] = await Promise.all([
+      prisma.stockMovement.aggregate({
+        where: { itemId: id, destinationLocationId: { not: null } },
+        _sum: { quantity: true },
+      }),
+      prisma.stockMovement.aggregate({
+        where: { itemId: id, sourceLocationId: { not: null } },
+        _sum: { quantity: true },
+      }),
+    ]);
+
+    const totalOnHand = (incoming._sum.quantity || 0) - (outgoing._sum.quantity || 0);
+
+    res.json({
+      ...item,
+      totalOnHand,
+      isLowStock: totalOnHand <= item.reorderLevel,
+    });
   } catch (err: any) {
     res.status(500).json({ error: 'Failed to retrieve item.', details: err.message });
   }
