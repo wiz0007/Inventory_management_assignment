@@ -4,13 +4,13 @@ Fill this in and commit it. This is the first file we open.
 
 ## Links
 
-- **GitHub repository:** <public repo URL>
-- **Live application:** <deployed URL>
+- **GitHub repository:** https://github.com/wiz0007/Inventory_management_assignment
+- **Live application:** https://inventory-management-assignment-tawny.vercel.app
+- **Backend API:** https://inventory-control-api-6sgy.onrender.com
 
 ## Notes for the reviewer
 
-<Anything we should know before opening the link — e.g. your host sleeps when idle and the first
-request can take up to a minute.>
+The backend API is hosted on Render's free tier, which spins down after periods of inactivity. If waking from cold sleep, the first request may take ~50 seconds to respond. Subsequent requests respond in milliseconds. All demo accounts are pre-seeded in PostgreSQL on Supabase.
 
 ## Demo credentials
 
