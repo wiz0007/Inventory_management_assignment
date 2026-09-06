@@ -52,3 +52,14 @@ Log the decisions that actually shaped this codebase — the ones where a real a
 - **Why:** While `localStorage` is easier to set up across decoupled origins, it exposes authentication credentials directly to JavaScript. If any client-side script or third-party dependency is compromised (XSS), the token can be instantly stolen. `httpOnly` cookies completely isolate session credentials from JavaScript access.
 - **Later reversed:** We initially started with `localStorage` token storage for rapid prototyping. We reversed this decision and refactored the entire authentication flow to `httpOnly` cookies with `cookie-parser`, pairing it with custom `X-Requested-With` header validation and origin checks to maintain ironclad defense against both XSS and CSRF.
 
+---
+
+## Decision 7: IPv4 Supabase Connection Pooling & Error Information Sanitization (CWE-209)
+
+- **Chose:** Connecting through Supabase's IPv4-compatible Connection Pooler (`aws-0-ap-southeast-1.pooler.supabase.com:5432`) and enforcing strict server-side error sanitization for all 5xx / Prisma exceptions.
+- **Rejected:** Direct database connection strings (`db.[ref].supabase.co`) and unmasked forwarding of `err.message` in the global Express error handler.
+- **Why:** 
+  1. **IPv4 Cloud Compatibility:** Modern Supabase direct endpoints resolve exclusively to IPv6 addresses. Free-tier cloud runtimes like Render operate on IPv4-only networks and cannot route to IPv6 hosts. Routing traffic through the Supabase connection pooler provides reliable dual-stack IPv4/IPv6 reachability.
+  2. **Security & Information Disclosure (CWE-209):** Forwarding raw ORM and driver exceptions (`Invalid prisma.user.findUnique() invocation...`, hostnames, ports) directly into API response bodies creates a severe security vulnerability that leaks internal infrastructure topology and ORM structures to attackers, while confusing users. The global error handler now masks internal 500/DB errors into clean user messages while logging full diagnostic traces to server logs.
+
+
