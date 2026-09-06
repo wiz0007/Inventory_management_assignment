@@ -59,3 +59,20 @@ I caught this security flaw and directed the AI to completely remove `localStora
 2. **Anti-CSRF Defense:** Added custom header validation (`X-Requested-With: StockPulse-Client`) on all state-modifying requests (`POST`, `PUT`, `DELETE`), along with strict origin checks on the backend.
 3. **Frontend Credentials:** Refactored `apiFetch` in `client/src/api.ts` to use `credentials: 'include'`, allowing the browser to manage the authentication cookie automatically without any JavaScript exposure.
 
+---
+
+## Milestone 5: Production Database IPv4 Connectivity & Error Sanitization (The Raw DB Error Leak Correction)
+
+### Prompt 5
+> *"What the hell is this issue now that I'm facing? Is this a problem which is now or which will be solved in further sprints? Also what is this error management? This error should not show like this for the user. You should know that."*
+
+### What you got (The Suboptimal Output & Security Vulnerability)
+When deploying to Render, the application failed to reach the database because Supabase direct domains (`db.[ref].supabase.co`) only resolve to IPv6 addresses, whereas Render operates exclusively on an IPv4 network. Worse, when Prisma threw an unhandled `PrismaClientInitializationError`, the Express error handler blindly forwarded `err.message` in the HTTP response body:
+`Invalid prisma.user.findUnique() invocation: Can't reach database server at 'db.izahrhrcubahdumabeln.supabase.co:5432'...`
+The frontend directly rendered this raw driver exception and internal database host in an error banner.
+
+### What you corrected (Dual Security & Infrastructure Fix)
+I intervened and called out the unacceptable error management: exposing internal database hostnames, ports, and ORM call signatures is a critical security vulnerability (CWE-209: Information Exposure) and unacceptable user experience.
+1. **IPv4 Connection Pooling:** Replaced direct Supabase domain connections with Supabase's IPv4-compatible connection pooler (`aws-0-ap-southeast-1.pooler.supabase.com:5432`), restoring database reachability from Render.
+2. **Global Error Sanitization:** Overhauled `server/src/middleware/error.ts` to intercept all Prisma database and unhandled 500 errors. The server logs the full stack trace internally for developer debugging, while returning a sanitized, user-friendly message (`"Database service is temporarily unavailable. Please try again shortly."`) to the client.
+3. **UI Error Presentation:** Enhanced `client/src/pages/LoginPage.tsx` with clean alert icons and graceful typography, ensuring system outages are displayed elegantly without ever leaking internal technical data.

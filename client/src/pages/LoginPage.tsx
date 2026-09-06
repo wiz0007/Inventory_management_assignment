@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Boxes, Lock, Mail, ArrowRight, ShieldCheck, UserCheck } from 'lucide-react';
+import { Boxes, Lock, Mail, ArrowRight, ShieldCheck, UserCheck, AlertCircle } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
   const { login } = useAuth();
@@ -78,8 +78,13 @@ export const LoginPage: React.FC = () => {
             borderRadius: 8,
             fontSize: '0.85rem',
             marginBottom: '1.5rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.65rem',
+            lineHeight: 1.4,
           }}>
-            {error}
+            <AlertCircle size={18} style={{ flexShrink: 0 }} />
+            <span>{error}</span>
           </div>
         )}
 
