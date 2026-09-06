@@ -9,8 +9,8 @@ This document tracks the procedural lifecycle, sprint progress, architectural st
 | Sprint | Milestone / Scope | Target Req. | Dedicated Branch | Status |
 |---|---|---|---|---|
 | **Sprint 0** | Architecture Baseline, Monorepo Setup & Docs | Setup | `main` | ✅ **COMPLETED** |
-| **Sprint 1** | Accounts, Roles & Location RBAC Enforcement | Req 1, 5 | `sprint-1-auth-locations` | ✅ **COMPLETED** *(PR Ready)* |
-| **Sprint 2** | Item Catalog, Categories & Immutable Audit Timeline | Req 2, 9 | `sprint-2-items-catalog` | ⏳ **NEXT UP** |
+| **Sprint 1** | Accounts, Roles & Location RBAC Enforcement | Req 1, 5 | `sprint-1-auth-locations` | ✅ **COMPLETED** *(Merged into `main`)* |
+| **Sprint 2** | Item Catalog, Categories & Immutable Audit Timeline | Req 2, 9 | `sprint-2-items-catalog` | ⏳ **IN PROGRESS** |
 | **Sprint 3** | Append-Only Stock Ledger & Atomic Movement Engine | Req 3, 4 | `sprint-3-stock-ledger` | 📋 *Backlog* |
 | **Sprint 4** | Server-Side Querying, Filtering & Pagination | Req 6 | `sprint-4-search-pagination`| 📋 *Backlog* |
 | **Sprint 5** | Bulk CSV Import/Export & Low-Stock Alerts Engine | Req 7, 10| `sprint-5-csv-alerts` | 📋 *Backlog* |
@@ -30,6 +30,8 @@ This document tracks the procedural lifecycle, sprint progress, architectural st
 
 ### Sprint 1: Accounts, Roles & Location RBAC (Req 1 & 5)
 - [x] JWT authentication with bcrypt password hashing (`/api/auth/register`, `/api/auth/login`, `/api/auth/me`).
+- [x] Hardened `httpOnly` cookie session management with `SameSite=Lax` (immune to XSS token theft).
+- [x] Anti-CSRF protection via custom `X-Requested-With: StockPulse-Client` header and origin verification.
 - [x] Server-side RBAC middleware (`requireAuth`, `requireRole('MANAGER')`, `requireLocationPermission`).
 - [x] Many-to-many Staff $\leftrightarrow$ Location assignment engine (`/api/locations/:id/assign-staff`).
 - [x] Automated test suite verifying 403 blocks for unauthorized staff locations (`server/src/test-sprint1.ts`).

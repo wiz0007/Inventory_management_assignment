@@ -42,3 +42,13 @@ Log the decisions that actually shaped this codebase — the ones where a real a
 - **Chose:** Streaming row-by-row validation that inserts every valid row and returns an itemized failure report detailing exact row numbers and error messages for invalid rows.
 - **Rejected:** Wrapping the entire CSV import in a single database transaction that rolls back the entire file if a single row has an error.
 - **Why:** Requirement 7 explicitly requires: *"Each import returns a per-row report naming exactly which rows failed and why, while still importing every row that was valid rather than rejecting the whole file over one bad line."* In real warehouse operations, an import file might contain 500 valid receipts and 2 typos; forcing operators to fix the typos and re-upload the entire batch creates operational delays.
+
+---
+
+## Decision 6: Secure HttpOnly Cookies vs. LocalStorage Bearer Tokens
+
+- **Chose:** Signed `httpOnly` cookies with `SameSite=Lax` and custom anti-CSRF headers.
+- **Rejected:** Storing JWT tokens in the browser's `localStorage` and attaching via `Authorization: Bearer` headers.
+- **Why:** While `localStorage` is easier to set up across decoupled origins, it exposes authentication credentials directly to JavaScript. If any client-side script or third-party dependency is compromised (XSS), the token can be instantly stolen. `httpOnly` cookies completely isolate session credentials from JavaScript access.
+- **Later reversed:** We initially started with `localStorage` token storage for rapid prototyping. We reversed this decision and refactored the entire authentication flow to `httpOnly` cookies with `cookie-parser`, pairing it with custom `X-Requested-With` header validation and origin checks to maintain ironclad defense against both XSS and CSRF.
+
