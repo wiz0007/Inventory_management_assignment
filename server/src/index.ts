@@ -3,6 +3,9 @@ import cors from 'cors';
 import { config } from './config';
 import { errorHandler } from './middleware/error';
 
+import { authRouter } from './routes/auth.routes';
+import { locationsRouter } from './routes/locations.routes';
+
 const app = express();
 
 app.use(cors({
@@ -17,6 +20,10 @@ app.use(express.urlencoded({ extended: true }));
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+// API Routes
+app.use('/api/auth', authRouter);
+app.use('/api/locations', locationsRouter);
 
 // Global error handler
 app.use(errorHandler);
