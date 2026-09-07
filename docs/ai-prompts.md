@@ -127,3 +127,37 @@ In-memory pagination breaks down rapidly as movement ledgers scale. To preserve 
 3. **High-Contrast Dark Mode Native Menus:** Added `color-scheme: dark` to `:root` and explicit dark background styling to `select option`, eliminating unreadable white-on-white text in mobile viewports.
 4. **CSS Bundle Optimization:** Reduced production CSS bundle size by ~35% (from 24.6 kB to 15.9 kB) via dead-code elimination and modular tree-shaking.
 
+---
+
+## Milestone 9: Bulk CSV Engine & Re-Arming Low-Stock Alert State Machine (Requirements 7 & 10)
+
+### Prompt 9
+> *"Implement Sprint 5: Bulk CSV Engine & Low-Stock Alerts for Requirements 7 and 10. For CSV imports, ensure partial success with detailed per-row diagnostic failure reports and enforce staff location RBAC per row. For alerts, compute derived on-hand <= reorder level company-wide, provide manager-only dismissal, and implement an automated re-arming state machine that resurfaces alerts if stock rises above reorder level and later drops back."*
+
+### What you got (The Flawed Static Flag / Atomic Abort Approach)
+AI models typically generate CSV bulk imports that wrap the entire file inside a single transaction, aborting all 500 rows if row 12 fails. For low-stock alerts, models default to adding a static `isDismissed` boolean flag on the item table, which permanently silences alerts even if inventory is restocked and subsequently depleted weeks later.
+
+### What you corrected (Granular Diagnostics & Chronological State Machine)
+1. **RFC 4180 Streaming Parser with Granular Diagnostics:** Built a standalone zero-dependency CSV parser in `server/src/utils/csv.ts` handling quotes, CRLF/LF line endings, and whitespace trimming. Items and receipts are processed row-by-row: valid rows commit immediately, while errors (duplicate SKU, missing category, invalid format, or unassigned location RBAC violations) are collected in an array of diagnostic reports (`{ row, sku, error }`) returned to the user.
+2. **Staff Location RBAC in Batch Ingestion:** For bulk receipts, warehouse staff permissions are evaluated per row (`requireLocationPermission`). Staff cannot sneak unauthorized location receipts through CSV batches.
+3. **Chronological Re-Arming State Machine:** Utilized the `low_stock_dismissals` model to record manager dismissal timestamps and stock levels. When evaluating low stock, the engine queries movements created strictly after `dismissedAt` in chronological order: if running balance ever crossed above `reorderLevel`, the alert automatically transitions to `RE-ARMED` (`isDismissed = false`, `isReArmed = true`) and resurfaces in active alerts and the global navbar badge counter.
+4. **Live Stock Position CSV Export:** Implemented `/api/csv/export-stock` returning a streaming CSV download with current on-hand quantities, location codes, categories, UOM, and reorder status.
+5. **Modern Scoped Frontend UI:** Created `ImportExportPage` with drag-and-drop file ingestion and template generators, and `AlertsPage` with KPI summary cards, deficit progress bars, and manager dismissal actions.
+
+---
+
+## Milestone 10: High-Density Mobile Responsiveness & Alert Card Presentation Refinement
+
+### Prompt 10
+> *"Refine the mobile representation of the AlertsPage at smaller viewports (down to 320px–380px). The alert card metrics currently stack vertically into huge numbers with dead space on the right, and the top 3 KPI summary cards push the list off-screen. Re-architect the metrics into a side-by-side comparison box, convert the top KPI cards into a compact 3-column strip, and balance touch targets."*
+
+### What you got (Awkward Vertical Bloating & Stretched Metrics)
+The default mobile response stacked `On-Hand Stock` and `Reorder Level` vertically one above the other in `.stockMetrics` with `flex-direction: column`, creating vertically elongated cards with excessive dead space on the right. Simultaneously, the 3 top KPI summary cards stacked vertically as individual full-width blocks, consuming over 350px of vertical viewport height before users could see any alert cards.
+
+### What you corrected (Side-by-Side Comparison Box & Compact 3-Column Summary Strip)
+1. **2-Column Metrics Comparison Box (`.metricsComparisonGrid`):** Structured `On-Hand Stock` and `Reorder Level` into a dedicated 2-column grid (`grid-template-columns: 1fr 1fr`) with a subtle elevated dark backdrop (`rgba(0, 0, 0, 0.28)`), delicate border, and aligned typography. Users immediately compare current on-hand against safety threshold side by side.
+2. **Sleek Horizontal Progress Bar:** Placed the safety threshold progress bar directly beneath the comparison box across the full card width, pairing progress bar fill with clean deficit metrics (`-20 units`).
+3. **Compact 3-Column Executive KPI Strip:** On mobile viewports (`<= 640px`), converted the 3 top KPI summary cards into a horizontal 3-column grid (`grid-template-columns: repeat(3, 1fr)`) with compact responsive labels (`.statLabelMobile`: "Active Alerts", "Re-Armed", "Deficit Units"), scaling down to ~55px height on 320px screens.
+4. **Balanced Touch Actions:** Refactored `.cardActions` buttons to share the row (`flex: 1 1 0`) for quick thumb taps without stretching awkwardly or wrapping unevenly.
+5. **Zero Horizontal Overflow:** Verified seamless rendering with no horizontal scrolling or clipped text across 320px, 360px, 412px, and 768px viewports.
+

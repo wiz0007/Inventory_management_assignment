@@ -376,22 +376,22 @@ export const MovementsPage: React.FC = () => {
     <div className="page-container" style={{ width: '100%', boxSizing: 'border-box' }}>
       
       {/* Page Header */}
-      <div className="catalog-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1.25rem', marginBottom: '2rem' }}>
-        <div style={{ minWidth: 0, flex: '1 1 auto' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.35rem' }}>
-            <div style={{ background: 'rgba(99, 102, 241, 0.15)', padding: '0.45rem', borderRadius: 8, display: 'flex', color: 'var(--accent-primary)' }}>
+      <div className={styles.pageHeader}>
+        <div className={styles.headerInfo}>
+          <div className={styles.titleRow}>
+            <div className={styles.titleIconWrapper}>
               <ArrowLeftRight size={22} />
             </div>
-            <h1 style={{ fontSize: '1.75rem', fontWeight: 800, letterSpacing: '-0.02em', minWidth: 0, wordBreak: 'break-word' }}>
+            <h1 className={styles.pageTitle}>
               Stock Movement Ledger
             </h1>
           </div>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', maxWidth: 720, lineHeight: 1.5 }}>
+          <p className={styles.pageSubtitle}>
             Append-only physical inventory stream. On-hand balances are derived dynamically from transaction history.
           </p>
         </div>
 
-        <div className="catalog-header-actions" style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+        <div className={styles.headerActions}>
           <button 
             onClick={fetchData} 
             className="btn btn-secondary"
