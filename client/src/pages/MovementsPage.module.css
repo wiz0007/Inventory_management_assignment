@@ -1,0 +1,109 @@
+/* MovementsPage Scoped Styles */
+
+.movementFilterBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  align-items: center;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.movementFilterSearch {
+  position: relative;
+  flex: 1 1 260px;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.movementFilterItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1 1 200px;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.movementFilterItem select {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.movementTabsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.35rem;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 0.35rem;
+  border-radius: 10px;
+  margin-bottom: 1.5rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.movementFormGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.85rem;
+  margin-bottom: 1.25rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.mobileScrollHint {
+  display: none;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: 0.6rem;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.movementActionButtons {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+@media (max-width: 768px) {
+  .mobileScrollHint {
+    display: flex !important;
+  }
+}
+
+@media (max-width: 580px) {
+  .movementFormGrid {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+  .movementFilterSearch {
+    flex: 1 1 100% !important;
+    width: 100% !important;
+  }
+  .movementFilterItem {
+    flex: 1 1 100% !important;
+    width: 100% !important;
+  }
+  .movementActionButtons {
+    flex-direction: column-reverse !important;
+    width: 100% !important;
+  }
+  .movementActionButtons button {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .movementTabsGrid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.35rem !important;
+  }
+}

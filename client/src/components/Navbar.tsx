@@ -8,10 +8,11 @@ import {
   FileUp, 
   Bell, 
   LogOut, 
-  ChevronDown,
-  Menu,
-  X
+  ChevronDown, 
+  Menu, 
+  X 
 } from 'lucide-react';
+import styles from './Navbar.module.css';
 
 interface NavbarProps {
   currentTab: string;
@@ -118,17 +119,17 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, lowSt
             <Boxes size={22} color="#fff" />
           </div>
           <div>
-            <div className="nav-logo-title" style={{ fontWeight: 800, fontSize: '1.05rem', letterSpacing: '-0.02em', background: 'linear-gradient(to right, #fff, #94a3b8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            <div className={styles.logoTitle} style={{ fontWeight: 800, fontSize: '1.05rem', letterSpacing: '-0.02em', background: 'linear-gradient(to right, #fff, #94a3b8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
               StockPulse
             </div>
-            <div className="nav-logo-subtitle" style={{ fontSize: '0.65rem', color: 'var(--text-muted)', letterSpacing: '0.04em', textTransform: 'uppercase', fontWeight: 600 }}>
+            <div className={styles.logoSubtitle} style={{ fontSize: '0.65rem', color: 'var(--text-muted)', letterSpacing: '0.04em', textTransform: 'uppercase', fontWeight: 600 }}>
               Audit Stock Ledger
             </div>
           </div>
         </div>
 
         {/* Desktop Navigation Tabs (Hidden on screens <= 1024px) */}
-        <nav className="nav-desktop-tabs" style={{ alignItems: 'center', gap: '0.35rem' }}>
+        <nav className={styles.desktopTabs} style={{ alignItems: 'center', gap: '0.35rem' }}>
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = currentTab === item.id;
@@ -162,7 +163,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, lowSt
         {/* Desktop User Profile & Switcher */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
           {user && (
-            <div ref={switchMenuRef} className="nav-desktop-profile" style={{ position: 'relative' }}>
+            <div ref={switchMenuRef} className={styles.desktopProfile} style={{ position: 'relative' }}>
               <button 
                 onClick={() => setShowSwitchMenu(!showSwitchMenu)}
                 style={{
@@ -239,7 +240,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, lowSt
           {/* Desktop Logout Button (Hidden on <= 1024px, drawer has Sign Out) */}
           <button 
             onClick={logout} 
-            className="btn btn-secondary nav-desktop-logout" 
+            className={`btn btn-secondary ${styles.desktopLogout}`} 
             title="Log out"
             style={{ padding: '0.45rem 0.65rem', borderRadius: 8 }}
           >
@@ -249,7 +250,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, lowSt
           {/* Mobile Hamburger Toggle Button (Shown on <= 1024px) */}
           <button 
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="btn btn-secondary nav-mobile-toggle"
+            className={`btn btn-secondary ${styles.mobileToggle}`}
             aria-label="Toggle navigation menu"
             style={{ padding: '0.45rem 0.65rem', borderRadius: 8 }}
           >
@@ -262,7 +263,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, lowSt
       {/* Mobile Drawer Navigation Menu (Rendered on <= 1024px when open) */}
       {mobileMenuOpen && (
         <div 
-          className="nav-mobile-menu mobile-menu-animated glass-panel" 
+          className={`glass-panel ${styles.mobileMenu} ${styles.mobileMenuAnimated}`} 
           style={{
             marginTop: '0.75rem',
             padding: '1rem',

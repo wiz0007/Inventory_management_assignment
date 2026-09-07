@@ -1,0 +1,88 @@
+/* Navbar Component Scoped Styles */
+
+.desktopTabs {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.desktopProfile {
+  display: block;
+}
+
+.desktopLogout {
+  display: inline-flex;
+}
+
+.mobileToggle {
+  display: none;
+}
+
+.mobileMenu {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding: 1rem;
+  border-top: 1px solid var(--border-subtle);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+}
+
+.logoTitle {
+  font-weight: 800;
+  font-size: 1.05rem;
+  letter-spacing: -0.02em;
+  background: linear-gradient(to right, #fff, #94a3b8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.logoSubtitle {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.mobileMenuAnimated {
+  animation: slideDown 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@media (max-width: 1180px) {
+  .desktopTabs {
+    display: none !important;
+  }
+  .desktopLogout {
+    display: none !important;
+  }
+  .desktopProfile {
+    display: none !important;
+  }
+  .mobileToggle {
+    display: inline-flex !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .logoSubtitle {
+    display: none !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .logoTitle {
+    display: none !important;
+  }
+}

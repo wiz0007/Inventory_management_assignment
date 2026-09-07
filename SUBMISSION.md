@@ -40,7 +40,7 @@ Mark each honestly. Partial is fine — say what is partial.
 | 3 | Stock movements | Done | Append-only ledger supporting receipts, issues, transfers, and adjustments with actor & location tracking |
 | 4 | The stock ledger | Done | Purely derived on-hand quantity with atomic transfers, negative-stock prevention, and mandatory reasons |
 | 5 | Location assignment | Done | Many-to-many staff-location assignments, manager-only assignment control |
-| 6 | Search, filtering and pagination | In progress | Basic text search & category filters active; full SQL pagination in Sprint 4 |
+| 6 | Search, filtering and pagination | Done | Server-side text search (name/SKU/desc), multi-criteria filters (category, location, archived, low-stock), derived balance sorting, and pagination with exact match counts |
 | 7 | Bulk import and export | Planned | CSV engine scheduled for Sprint 5 |
 | 8 | Visualizations | Planned | Dashboard & 8-week movement charts scheduled for Sprint 6 |
 | 9 | Audit timeline | Done | Immutable append-only audit trail recording item creation, attribute diffs, and staff notes |

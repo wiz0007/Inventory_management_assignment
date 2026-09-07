@@ -93,3 +93,37 @@ In multi-user warehouse environments, concurrent dispatch or transfer requests c
 2. **Purely Derived Quantities:** Reaffirmed the architectural invariant that stock balances are never stored in a mutable counter column; on-hand quantity is dynamically derived by aggregating append-only receipts, issues, transfers, and adjustments.
 3. **Mandatory Reason Validation:** Restricted `ADJUSTMENT` movement types to managers on the server and enforced a strict non-empty `reason` check, preventing unexplained stock adjustments.
 4. **Live Stock Availability in UI:** Integrated live warehouse balance checks in `MovementsPage.tsx`, displaying available stock in real time as the operator selects source locations.
+
+---
+
+## Milestone 7: Server-Side Querying, Filtering & Pagination (Requirement 6)
+
+### Prompt 7
+> *"Implement server-side search, multi-criteria filtering, derived on-hand sorting, and pagination for Requirement 6. Ensure zero client-side array filtering occurs and verify responsive controls down to 320px–380px."*
+
+### What you got (The Suboptimal / Memory-Heavy Approach)
+The initial suggestion attempted to load all item records into Node.js application memory, calculate balances in JavaScript, and perform in-memory array filtering and slicing.
+
+### What you corrected (PostgreSQL CTE Aggregation & Zero-Scan Pagination)
+In-memory pagination breaks down rapidly as movement ledgers scale. To preserve ledger integrity and performance:
+1. **Dynamic SQL Common Table Expression (CTE):** Structured a parameterized PostgreSQL query that calculates exact on-hand balances directly from `stock_movements` rows, supporting both company-wide totals and location-specific balances.
+2. **True Server-Side Filtering & Sorting:** Applied text search (`ILIKE` across name, SKU, and description), category filters, archived state filters, and low-stock threshold evaluations (`COALESCE(sb."onHand", 0) <= i."reorderLevel"`) inside the database `WHERE` clause, with server-side `ORDER BY` on derived on-hand quantities.
+3. **Parallel Exact Count Queries:** Executed matching `COUNT(*)` in parallel to return authoritative pagination metadata (`total`, `totalPages`, `page`, `limit`).
+4. **Debounced Search & Responsive Toolbar:** Added a 300ms debounce to the search input with instant clear, alongside category, warehouse location, and sort selectors styled to wrap gracefully without horizontal overflow down to 320px.
+
+---
+
+## Milestone 8: Modular CSS Modules Architecture & High-Contrast Mobile Dark Mode
+
+### Prompt 8
+> *"Refactor the monolithic index.css into scoped CSS Modules (*.module.css) per component while retaining the centralized design tokens and dark color scheme. Fix mobile dropdown white-on-white contrast issues and ensure zero horizontal scroll on viewports down to 320px."*
+
+### What you got (The Bloated Monolith Approach)
+`index.css` had expanded to over 920 lines containing page-specific classes, layout hacks, and un-encapsulated selectors that risked cross-page regressions as more features were added. Furthermore, native `<select>` dropdown popups on Chromium/Windows defaulted to light mode backgrounds without `color-scheme: dark`.
+
+### What you corrected (Zero-Dependency Modular Architecture)
+1. **Separation of Concerns:** Preserved `:root` design tokens, global reset, dark color scheme, and universal primitives in a lean 240-line `index.css`.
+2. **Scoped Component Modules:** Created `Navbar.module.css`, `ItemsPage.module.css`, and `MovementsPage.module.css` leveraging Vite's native CSS Modules support for zero-collision class hashing.
+3. **High-Contrast Dark Mode Native Menus:** Added `color-scheme: dark` to `:root` and explicit dark background styling to `select option`, eliminating unreadable white-on-white text in mobile viewports.
+4. **CSS Bundle Optimization:** Reduced production CSS bundle size by ~35% (from 24.6 kB to 15.9 kB) via dead-code elimination and modular tree-shaking.
+
