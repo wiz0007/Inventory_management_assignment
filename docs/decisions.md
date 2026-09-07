@@ -98,3 +98,17 @@ Log the decisions that actually shaped this codebase — the ones where a real a
   3. **High-Hygiene Design System:** Design tokens (`:root` variables, typography, `color-scheme: dark`, native select dark popups) and universal primitives (`.glass-panel`, `.btn`, `.badge`) remain centralized in `index.css`, giving all CSS modules immediate access via CSS custom property inheritance while reducing production bundle CSS by ~35%.
   4. **Localized Responsiveness:** Breakpoints down to 320px–380px are preserved in context with the exact layout elements they control, dramatically enhancing maintainability for long-term project expansion.
 
+---
+
+## Decision 12: Partial Batch CSV Ingestion Engine & Chronological Low-Stock Alert Re-Arming State Machine (Requirements 7 & 10)
+
+- **Chose:**
+  1. **Partial Success CSV Engine:** An iterative, row-by-row batch ingestion pipeline for both catalog items and stock receipts. Valid rows are committed to PostgreSQL, while invalid rows (duplicate SKUs, missing required fields, non-existent locations, or staff location RBAC violations) are captured in an array of diagnostic error objects (`{ row, sku, location, error }`) returned in the HTTP response.
+  2. **Chronological Re-Arming State Machine:** An evaluation algorithm for low-stock alerts that tracks items where company-wide derived balance $\le$ reorder level. For items dismissed by a manager, the system inspects movements created strictly after `dismissedAt` in chronological order. Starting from the snapshot quantity recorded at dismissal, it simulates the running balance: if the running balance ever exceeded `reorderLevel`, the alert automatically re-arms (`isDismissed = false`, `isReArmed = true`) and resurfaces in active alerts and the global navbar counter.
+- **Rejected:**
+  1. All-or-nothing CSV batch transactions that abort entire uploads if a single row is invalid.
+  2. Static dismissal flags (`isDismissed = true` boolean column on the item) that permanently silence alerts unless manually un-dismissed.
+- **Why:**
+  1. **Operator Efficiency & Granular Visibility:** In real-world enterprise warehouse operations, CSV imports frequently contain hundreds of lines. Aborting an entire batch because row 87 has a typo frustrates operations staff and forces painful manual deduplication. Returning a structured diagnostic table allows the operator to import all valid rows immediately and review specific line-item discrepancies.
+  2. **Auditable RBAC Enforcement in Batch Ingestion:** For receipts, staff location assignments are evaluated per row (`requireLocationPermission`). A warehouse lead assigned to `WH-MAIN` can bulk import a shipment containing items for `WH-MAIN`, while any stray row for `STORE-01` is rejected with an RBAC violation without discarding valid stock.
+  3. **Zero-Drift Alert Lifecycle:** Permanent dismissals lead to catastrophic stockouts: a manager dismisses an alert for low stock while waiting for a supplier; after the supplier arrives and stock is depleted again weeks later, the manager would never be notified without an automated re-arming state machine. By recording the dismissal snapshot and tracking subsequent ledger movements chronologically, the system mathematically guarantees that any post-dismissal stock recovery re-arms the alert the moment stock drops back into deficit.

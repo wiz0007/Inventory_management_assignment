@@ -65,12 +65,14 @@ This document tracks the procedural lifecycle, sprint progress, architectural st
 - [x] Responsive catalog filter bar and pagination navigation bar tested down to 320px–380px viewports.
 
 ### Sprint 5: Bulk CSV Engine & Low-Stock Alerts (Req 7 & 10)
-- [ ] CSV bulk import for items with per-row failure reports and partial success.
-- [ ] CSV bulk import for stock receipts with per-row failure reports and partial success.
-- [ ] CSV export of current stock position (on-hand by location).
-- [ ] Low-stock alert trigger: total on-hand $\le$ reorder level across all locations.
-- [ ] Global navigation badge count.
-- [ ] Manager alert dismissal with **re-arming state machine** (reappears if stock rises above and drops back below reorder level).
+- [x] CSV bulk import for items with per-row failure reports and partial success.
+- [x] CSV bulk import for stock receipts with per-row failure reports and partial success (staff location RBAC enforced per row).
+- [x] CSV export of current stock position (on-hand by location with SKU, name, category, location, UOM, and reorder status).
+- [x] Low-stock alert trigger: total on-hand $\le$ reorder level across all locations.
+- [x] Global navigation badge count updating in real-time.
+- [x] Manager alert dismissal with **re-arming state machine** (reappears if stock rises above and drops back below reorder level).
+- [x] Automated test suite verifying partial success, failure reporting, export, alerts, dismissal, and state machine re-arming (`server/tests/test-sprint5.ts`).
+- [x] Responsive Frontend CSV Data Operations page (`ImportExportPage`) and Low-Stock Alert Monitor (`AlertsPage`) with scoped CSS Modules.
 
 ### Sprint 6: Analytics Dashboard & Visualizations (Req 8)
 - [ ] 4 Headline KPI cards: Active Items, Items $\le$ Reorder Level, Movements Today, Distinct Items Moved This Week.

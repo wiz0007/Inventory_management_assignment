@@ -9,6 +9,8 @@ import { locationsRouter } from './routes/locations.routes';
 import { categoriesRouter } from './routes/categories.routes';
 import { itemsRouter } from './routes/items.routes';
 import { movementsRouter } from './routes/movements.routes';
+import { csvRouter } from './routes/csv.routes';
+import { alertsRouter } from './routes/alerts.routes';
 
 const app = express();
 
@@ -18,7 +20,8 @@ app.use(cors({
 }));
 
 app.use(cookieParser());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.text({ type: ['text/csv', 'text/plain'], limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // Health check endpoint
@@ -32,6 +35,8 @@ app.use('/api/locations', locationsRouter);
 app.use('/api/categories', categoriesRouter);
 app.use('/api/items', itemsRouter);
 app.use('/api/movements', movementsRouter);
+app.use('/api/csv', csvRouter);
+app.use('/api/alerts', alertsRouter);
 
 // Global error handler
 app.use(errorHandler);

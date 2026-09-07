@@ -73,15 +73,16 @@ export async function requireAuth(
   }
 }
 
-export function requireRole(...roles: Role[]) {
+export function requireRole(...roles: (Role | Role[])[]) {
+  const flatRoles = roles.flat();
   return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     if (!req.user) {
       return res.status(401).json({ error: 'Authentication required.' });
     }
 
-    if (!roles.includes(req.user.role)) {
+    if (!flatRoles.includes(req.user.role)) {
       return res.status(403).json({
-        error: `Forbidden: This action requires one of the following roles: ${roles.join(', ')}.`,
+        error: `Forbidden: This action requires one of the following roles: ${flatRoles.join(', ')}.`,
       });
     }
 

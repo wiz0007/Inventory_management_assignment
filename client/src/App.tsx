@@ -1,16 +1,39 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Navbar } from './components/Navbar';
 import { LoginPage } from './pages/LoginPage';
 import { LocationsPage } from './pages/LocationsPage';
 import { ItemsPage } from './pages/ItemsPage';
 import { MovementsPage } from './pages/MovementsPage';
+import { ImportExportPage } from './pages/ImportExportPage';
+import { AlertsPage } from './pages/AlertsPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { LayoutDashboard, FileUp, Bell } from 'lucide-react';
+import { LayoutDashboard } from 'lucide-react';
 
 const AppContent: React.FC = () => {
   const { user, loading } = useAuth();
   const [currentTab, setCurrentTab] = useState('items');
+  const [lowStockCount, setLowStockCount] = useState<number>(0);
+
+  const fetchLowStockCount = useCallback(async () => {
+    if (!user) return;
+    try {
+      const res = await fetch('/api/alerts/count', { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setLowStockCount(data.count ?? 0);
+      }
+    } catch (err) {
+      console.error('Failed to fetch low stock count', err);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    fetchLowStockCount();
+    // Poll count periodically (every 30 seconds)
+    const interval = setInterval(fetchLowStockCount, 30000);
+    return () => clearInterval(interval);
+  }, [fetchLowStockCount]);
 
   if (loading) {
     return (
@@ -26,7 +49,7 @@ const AppContent: React.FC = () => {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <Navbar currentTab={currentTab} setCurrentTab={setCurrentTab} lowStockCount={0} />
+      <Navbar currentTab={currentTab} setCurrentTab={setCurrentTab} lowStockCount={lowStockCount} />
 
       <main style={{ flex: 1 }}>
         <ErrorBoundary key={currentTab} fallbackTab={setCurrentTab}>
@@ -48,29 +71,12 @@ const AppContent: React.FC = () => {
           {currentTab === 'items' && <ItemsPage />}
           {currentTab === 'locations' && <LocationsPage />}
           {currentTab === 'movements' && <MovementsPage />}
-
-          {currentTab === 'import-export' && (
-            <div style={{ maxWidth: 1400, margin: '0 auto', padding: '3rem 1.5rem', textAlign: 'center' }}>
-              <div className="glass-panel" style={{ padding: '3rem', maxWidth: 600, margin: '0 auto' }}>
-                <FileUp size={48} color="var(--accent-primary)" style={{ margin: '0 auto 1rem auto' }} />
-                <h2 style={{ fontSize: '1.5rem', fontWeight: 700 }}>Bulk CSV Import & Export</h2>
-                <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem', fontSize: '0.9rem' }}>
-                  Bulk import and export inventory items and receipts via CSV format with row-level validation.
-                </p>
-              </div>
-            </div>
-          )}
-
+          {currentTab === 'import-export' && <ImportExportPage />}
           {currentTab === 'alerts' && (
-            <div style={{ maxWidth: 1400, margin: '0 auto', padding: '3rem 1.5rem', textAlign: 'center' }}>
-              <div className="glass-panel" style={{ padding: '3rem', maxWidth: 600, margin: '0 auto' }}>
-                <Bell size={48} color="var(--accent-primary)" style={{ margin: '0 auto 1rem auto' }} />
-                <h2 style={{ fontSize: '1.5rem', fontWeight: 700 }}>Low-Stock Alerts</h2>
-                <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem', fontSize: '0.9rem' }}>
-                  Threshold alerts for low stock levels with automated notifications and re-arming triggers.
-                </p>
-              </div>
-            </div>
+            <AlertsPage 
+              onNavigateToMovements={() => setCurrentTab('movements')} 
+              onRefreshBadge={fetchLowStockCount} 
+            />
           )}
         </ErrorBoundary>
       </main>

@@ -41,10 +41,10 @@ Mark each honestly. Partial is fine — say what is partial.
 | 4 | The stock ledger | Done | Purely derived on-hand quantity with atomic transfers, negative-stock prevention, and mandatory reasons |
 | 5 | Location assignment | Done | Many-to-many staff-location assignments, manager-only assignment control |
 | 6 | Search, filtering and pagination | Done | Server-side text search (name/SKU/desc), multi-criteria filters (category, location, archived, low-stock), derived balance sorting, and pagination with exact match counts |
-| 7 | Bulk import and export | Planned | CSV engine scheduled for Sprint 5 |
+| 7 | Bulk import and export | Done | Bulk CSV engine with partial success & per-row diagnostic failure reports for items & receipts (enforcing staff location RBAC per row) + live stock position CSV export |
 | 8 | Visualizations | Planned | Dashboard & 8-week movement charts scheduled for Sprint 6 |
 | 9 | Audit timeline | Done | Immutable append-only audit trail recording item creation, attribute diffs, and staff notes |
-| 10 | Low-stock alerts | Planned | Multi-location reorder evaluation with re-arming state machine in Sprint 5 |
+| 10 | Low-stock alerts | Done | Multi-location reorder evaluation with real-time navbar counter, manager-only dismissal, and chronological balance re-arming state machine |
 
 ## How much time did you actually spend?
 
