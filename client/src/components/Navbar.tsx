@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { 
   Boxes, 
@@ -15,13 +16,15 @@ import {
 import styles from './Navbar.module.css';
 
 interface NavbarProps {
-  currentTab: string;
-  setCurrentTab: (tab: string) => void;
+  currentTab?: string;
+  setCurrentTab?: (tab: string) => void;
   lowStockCount?: number;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, lowStockCount = 0 }) => {
   const { user, logout, login } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [showSwitchMenu, setShowSwitchMenu] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const switchMenuRef = useRef<HTMLDivElement>(null);
@@ -74,19 +77,27 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, lowSt
     await login(email, pass);
   };
 
-  const handleNavClick = (tab: string) => {
-    setCurrentTab(tab);
+  const navItems = [
+    { id: 'dashboard', path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'items', path: '/items', label: 'Inventory', icon: Boxes },
+    { id: 'movements', path: '/movements', label: 'Ledger', icon: ArrowLeftRight },
+    { id: 'locations', path: '/locations', label: 'Locations', icon: MapPin },
+    { id: 'import-export', path: '/import-export', label: 'CSV Data', icon: FileUp },
+    { id: 'alerts', path: '/alerts', label: 'Low Stock', icon: Bell, badge: lowStockCount },
+  ];
+
+  const handleNavClick = (path: string, id: string) => {
+    navigate(path);
+    if (setCurrentTab) setCurrentTab(id);
     setMobileMenuOpen(false);
   };
 
-  const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'items', label: 'Inventory', icon: Boxes },
-    { id: 'movements', label: 'Ledger', icon: ArrowLeftRight },
-    { id: 'locations', label: 'Locations', icon: MapPin },
-    { id: 'import-export', label: 'CSV Data', icon: FileUp },
-    { id: 'alerts', label: 'Low Stock', icon: Bell, badge: lowStockCount },
-  ];
+  const isItemActive = (item: typeof navItems[0]) => {
+    if (location.pathname === item.path) return true;
+    if (item.id === 'dashboard' && (location.pathname === '/' || location.pathname === '')) return true;
+    if (currentTab === item.id) return true;
+    return false;
+  };
 
   return (
     <header style={{
@@ -104,7 +115,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, lowSt
         {/* Brand Logo */}
         <div 
           style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', flexShrink: 0 }} 
-          onClick={() => handleNavClick('dashboard')}
+          onClick={() => handleNavClick('/dashboard', 'dashboard')}
         >
           <div style={{
             width: 38,
@@ -132,11 +143,11 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, lowSt
         <nav className={styles.desktopTabs} style={{ alignItems: 'center', gap: '0.35rem' }}>
           {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive = currentTab === item.id;
+            const isActive = isItemActive(item);
             return (
               <button 
                 key={item.id}
-                onClick={() => handleNavClick(item.id)} 
+                onClick={() => handleNavClick(item.path, item.id)} 
                 className={`btn ${isActive ? 'btn-primary' : 'btn-secondary'}`}
                 style={{ padding: '0.45rem 0.8rem', fontSize: '0.825rem', whiteSpace: 'nowrap' }}
               >
@@ -302,11 +313,11 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, lowSt
 
           {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive = currentTab === item.id;
+            const isActive = isItemActive(item);
             return (
               <button 
                 key={item.id}
-                onClick={() => handleNavClick(item.id)} 
+                onClick={() => handleNavClick(item.path, item.id)} 
                 className={`btn ${isActive ? 'btn-primary' : 'btn-secondary'}`}
                 style={{ 
                   justifyContent: 'flex-start', 
