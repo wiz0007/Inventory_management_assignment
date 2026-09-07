@@ -1,18 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { BrowserRouter, useNavigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Navbar } from './components/Navbar';
 import { LoginPage } from './pages/LoginPage';
-import { LocationsPage } from './pages/LocationsPage';
-import { ItemsPage } from './pages/ItemsPage';
-import { MovementsPage } from './pages/MovementsPage';
-import { ImportExportPage } from './pages/ImportExportPage';
-import { AlertsPage } from './pages/AlertsPage';
-import { DashboardPage } from './pages/DashboardPage';
+import { AllRoutes } from './routes/allRoutes';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 const AppContent: React.FC = () => {
   const { user, loading } = useAuth();
-  const [currentTab, setCurrentTab] = useState('dashboard');
+  const navigate = useNavigate();
+  const location = useLocation();
   const [lowStockCount, setLowStockCount] = useState<number>(0);
 
   const fetchLowStockCount = useCallback(async () => {
@@ -49,29 +46,11 @@ const AppContent: React.FC = () => {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <Navbar currentTab={currentTab} setCurrentTab={setCurrentTab} lowStockCount={lowStockCount} />
+      <Navbar lowStockCount={lowStockCount} />
 
       <main style={{ flex: 1, minWidth: 0, width: '100%', overflowX: 'hidden' }}>
-        <ErrorBoundary key={currentTab} fallbackTab={setCurrentTab}>
-          {currentTab === 'dashboard' && (
-            <DashboardPage
-              onNavigateToItems={() => setCurrentTab('items')}
-              onNavigateToAlerts={() => setCurrentTab('alerts')}
-              onNavigateToMovements={() => setCurrentTab('movements')}
-              onNavigateToLocations={() => setCurrentTab('locations')}
-            />
-          )}
-
-          {currentTab === 'items' && <ItemsPage />}
-          {currentTab === 'locations' && <LocationsPage />}
-          {currentTab === 'movements' && <MovementsPage />}
-          {currentTab === 'import-export' && <ImportExportPage />}
-          {currentTab === 'alerts' && (
-            <AlertsPage 
-              onNavigateToMovements={() => setCurrentTab('movements')} 
-              onRefreshBadge={fetchLowStockCount} 
-            />
-          )}
+        <ErrorBoundary key={location.pathname} fallbackTab={() => navigate('/dashboard')}>
+          <AllRoutes onRefreshBadge={fetchLowStockCount} />
         </ErrorBoundary>
       </main>
     </div>
@@ -80,9 +59,11 @@ const AppContent: React.FC = () => {
 
 export const App: React.FC = () => {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <BrowserRouter>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </BrowserRouter>
   );
 };
 
