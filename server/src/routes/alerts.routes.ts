@@ -24,6 +24,14 @@ interface EvaluatedAlertItem {
   reArmedAt?: Date | null;
   dismissedAt?: Date | null;
   dismissedByName?: string | null;
+  dismissal?: {
+    dismissedAt: string;
+    quantityAtDismissal: number;
+    user: {
+      name: string;
+      email: string;
+    };
+  } | null;
 }
 
 /**
