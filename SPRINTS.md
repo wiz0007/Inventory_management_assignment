@@ -12,7 +12,7 @@ This document tracks the procedural lifecycle, sprint progress, architectural st
 | **Sprint 1** | Accounts, Roles & Location RBAC Enforcement | Req 1, 5 | `sprint-1-auth-locations` | ✅ **COMPLETED** *(Merged into `main`)* |
 | **Sprint 2** | Item Catalog, Categories & Immutable Audit Timeline | Req 2, 9 | `sprint-2-items-catalog` | ✅ **COMPLETED** |
 | **Sprint 3** | Append-Only Stock Ledger & Atomic Movement Engine | Req 3, 4 | `sprint-3-stock-ledger` | ✅ **COMPLETED** |
-| **Sprint 4** | Server-Side Querying, Filtering & Pagination | Req 6 | `sprint-4-search-pagination`| ⏳ **IN PROGRESS** |
+| **Sprint 4** | Server-Side Querying, Filtering & Pagination | Req 6 | `sprint-4-search-pagination`| ✅ **COMPLETED** |
 | **Sprint 5** | Bulk CSV Import/Export & Low-Stock Alerts Engine | Req 7, 10| `sprint-5-csv-alerts` | 📋 *Backlog* |
 | **Sprint 6** | Operational Dashboard & 8-Week Analytics Charts | Req 8 | `sprint-6-dashboard-charts`| 📋 *Backlog* |
 | **Sprint 7** | Seed Data, Documentation & Production Deployment | Review | `sprint-7-final-polish` | 📋 *Backlog* |
@@ -57,10 +57,12 @@ This document tracks the procedural lifecycle, sprint progress, architectural st
 - [x] Responsive Frontend Movements Ledger and interactive Record Movement modal with live stock availability.
 
 ### Sprint 4: Server-Side Querying, Filtering & Pagination (Req 6)
-- [ ] Server-side text search over item name and SKU.
-- [ ] Multi-criteria filters: category, location, archived state, at-or-below-reorder.
-- [ ] Server-side sorting: by name, reorder level, or dynamically derived on-hand quantity.
-- [ ] Server-side pagination with exact match counts.
+- [x] Server-side text search over item name, SKU, and description with case-insensitive matching.
+- [x] Multi-criteria filters: category, location (with dynamic location-scoped balance derivation), archived state (`active`, `archived`, `all`), and at-or-below-reorder (`lowStockOnly`).
+- [x] Server-side sorting: by name, SKU, reorder level, or dynamically derived on-hand quantity (`asc`/`desc`).
+- [x] Server-side pagination with exact total match counts and limit/offset boundary slices.
+- [x] Automated test suite verifying all query filters, sorting, and pagination boundaries (`server/tests/test-sprint4.ts`).
+- [x] Responsive catalog filter bar and pagination navigation bar tested down to 320px–380px viewports.
 
 ### Sprint 5: Bulk CSV Engine & Low-Stock Alerts (Req 7 & 10)
 - [ ] CSV bulk import for items with per-row failure reports and partial success.

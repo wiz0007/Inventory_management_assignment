@@ -18,6 +18,7 @@ import {
   Zap,
   Info
 } from 'lucide-react';
+import styles from './MovementsPage.module.css';
 
 interface Location {
   id: string;
@@ -109,7 +110,7 @@ export const MovementsPage: React.FC = () => {
     try {
       const [movData, itemsData, locsData] = await Promise.all([
         apiFetch<{ movements: StockMovement[] }>('/movements'),
-        apiFetch<Item[]>('/items?includeArchived=false'),
+        apiFetch<{ items: Item[] } | Item[]>('/items?includeArchived=false&all=true'),
         apiFetch<{ locations: Location[] }>('/locations'),
       ]);
 
@@ -456,10 +457,10 @@ export const MovementsPage: React.FC = () => {
 
       {/* Filter and Search Bar */}
       <div className="glass-panel" style={{ padding: '1.25rem', marginBottom: '2rem', width: '100%', boxSizing: 'border-box', overflow: 'hidden' }}>
-        <div className="movement-filter-bar">
+        <div className={styles.movementFilterBar}>
           
           {/* Search Box */}
-          <div className="movement-filter-search">
+          <div className={styles.movementFilterSearch}>
             <Search size={18} style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
             <input 
               type="text"
@@ -480,7 +481,7 @@ export const MovementsPage: React.FC = () => {
           </div>
 
           {/* Type Filter */}
-          <div className="movement-filter-item">
+          <div className={styles.movementFilterItem}>
             <SlidersHorizontal size={16} color="var(--text-muted)" style={{ flexShrink: 0 }} />
             <select
               value={typeFilter}
@@ -496,7 +497,7 @@ export const MovementsPage: React.FC = () => {
           </div>
 
           {/* Location Filter */}
-          <div className="movement-filter-item">
+          <div className={styles.movementFilterItem}>
             <Building2 size={16} color="var(--text-muted)" style={{ flexShrink: 0 }} />
             <select
               value={locationFilter}
@@ -544,7 +545,7 @@ export const MovementsPage: React.FC = () => {
         </div>
       ) : (
         <div className="glass-panel" style={{ overflow: 'hidden' }}>
-          <div className="mobile-scroll-hint" style={{ padding: '0.75rem 1.25rem 0 1.25rem' }}>
+          <div className={styles.mobileScrollHint} style={{ padding: '0.75rem 1.25rem 0 1.25rem' }}>
             <ArrowLeftRight size={14} color="var(--accent-primary)" />
             <span>Swipe horizontally to view full ledger rows</span>
           </div>
@@ -729,7 +730,7 @@ export const MovementsPage: React.FC = () => {
             </div>
 
             {/* Movement Type Segmented Tabs */}
-            <div className="movement-tabs-grid">
+            <div className={styles.movementTabsGrid}>
               <button
                 type="button"
                 onClick={() => {
@@ -870,7 +871,7 @@ export const MovementsPage: React.FC = () => {
 
               {/* 3. TRANSFER: Source and Destination */}
               {modalType === 'TRANSFER' && (
-                <div className="movement-form-grid">
+                <div className={styles.movementFormGrid}>
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
                       <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>
@@ -917,7 +918,7 @@ export const MovementsPage: React.FC = () => {
               {/* 4. ADJUSTMENT: Manager only, Direction, Location, Mandatory Reason */}
               {modalType === 'ADJUSTMENT' && (
                 <>
-                  <div className="movement-form-grid">
+                  <div className={styles.movementFormGrid}>
                     <div>
                       <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem', color: 'var(--text-primary)' }}>
                         Warehouse Location <span style={{ color: '#f87171' }}>*</span>
@@ -1029,7 +1030,7 @@ export const MovementsPage: React.FC = () => {
               </div>
 
               {/* Action Buttons */}
-              <div className="movement-action-buttons" style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+              <div className={styles.movementActionButtons} style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
                 <button
                   type="button"
                   onClick={closeModal}

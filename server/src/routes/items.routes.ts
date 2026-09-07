@@ -1,7 +1,7 @@
 import { Router, Response } from 'express';
 import { prisma } from '../db';
 import { requireAuth, requireRole, AuthenticatedRequest } from '../middleware/auth';
-import { Role, TimelineEventType } from '@prisma/client';
+import { Prisma, Role, TimelineEventType } from '@prisma/client';
 import { z } from 'zod';
 
 export const itemsRouter = Router();
@@ -37,73 +37,194 @@ const addNoteSchema = z.object({
 
 /**
  * GET /api/items
- * List items with category, optional category filter, search, and archived filter
+ * High-performance Server-Side Querying, Multi-Criteria Filtering, Derived On-Hand Sorting & Pagination (Requirement 6)
+ * Supported Query Params:
+ *  - search: case-insensitive text search over item name, sku, and description
+ *  - categoryId: UUID of category or 'all'
+ *  - locationId: UUID of warehouse location or 'all' (dynamically computes location-specific stock)
+ *  - archived: 'active' (default), 'archived', or 'all' (also supports legacy includeArchived/archivedOnly)
+ *  - lowStockOnly: 'true' | '1' (filters where derived onHand <= reorderLevel)
+ *  - sortBy: 'name' | 'sku' | 'reorderLevel' | 'onHand' | 'createdAt' (default: 'name')
+ *  - sortOrder: 'asc' | 'desc'
+ *  - page: 1-based page index (default: 1)
+ *  - limit: items per page (default: 12, max: 100)
+ *  - all: 'true' (bypasses pagination limits for dropdown selectors)
+ *  - format: 'array' (optional legacy format override)
  */
 itemsRouter.get('/', async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { categoryId, search, includeArchived, archivedOnly } = req.query;
+    const {
+      categoryId,
+      locationId,
+      search,
+      archived,
+      includeArchived,
+      archivedOnly,
+      lowStockOnly,
+      sortBy,
+      sortOrder,
+      page,
+      limit,
+      all,
+      format,
+    } = req.query;
 
-    const whereClause: any = {};
+    const targetLocationId =
+      locationId && typeof locationId === 'string' && locationId !== 'all' && locationId.trim() !== ''
+        ? locationId.trim()
+        : null;
 
-    if (archivedOnly === 'true') {
-      whereClause.isArchived = true;
-    } else if (includeArchived !== 'true') {
-      whereClause.isArchived = false;
+    // Build the dynamic Stock Balances CTE
+    // Calculates on-hand balances directly from the append-only stock_movements ledger
+    let balanceCte: Prisma.Sql;
+    if (targetLocationId) {
+      balanceCte = Prisma.sql`
+        WITH stock_balances AS (
+          SELECT 
+            sm."itemId",
+            COALESCE(SUM(CASE WHEN sm."destinationLocationId" = ${targetLocationId} THEN sm.quantity ELSE 0 END), 0) - 
+            COALESCE(SUM(CASE WHEN sm."sourceLocationId" = ${targetLocationId} THEN sm.quantity ELSE 0 END), 0) AS "onHand"
+          FROM stock_movements sm
+          WHERE sm."destinationLocationId" = ${targetLocationId} OR sm."sourceLocationId" = ${targetLocationId}
+          GROUP BY sm."itemId"
+        )
+      `;
+    } else {
+      balanceCte = Prisma.sql`
+        WITH stock_balances AS (
+          SELECT 
+            sm."itemId",
+            COALESCE(SUM(CASE WHEN sm."destinationLocationId" IS NOT NULL THEN sm.quantity ELSE 0 END), 0) - 
+            COALESCE(SUM(CASE WHEN sm."sourceLocationId" IS NOT NULL THEN sm.quantity ELSE 0 END), 0) AS "onHand"
+          FROM stock_movements sm
+          GROUP BY sm."itemId"
+        )
+      `;
     }
 
-    if (categoryId && typeof categoryId === 'string' && categoryId !== 'all') {
-      whereClause.categoryId = categoryId;
+    // Build WHERE conditions safely with Prisma.sql fragments
+    const whereConditions: Prisma.Sql[] = [];
+
+    // 1. Archived State Filter
+    let resolvedArchived = 'active';
+    if (archived === 'archived' || archivedOnly === 'true') {
+      resolvedArchived = 'archived';
+    } else if (archived === 'all' || includeArchived === 'true') {
+      resolvedArchived = 'all';
+    } else if (archived === 'active') {
+      resolvedArchived = 'active';
     }
 
+    if (resolvedArchived === 'active') {
+      whereConditions.push(Prisma.sql`i."isArchived" = false`);
+    } else if (resolvedArchived === 'archived') {
+      whereConditions.push(Prisma.sql`i."isArchived" = true`);
+    }
+
+    // 2. Category Filter
+    if (categoryId && typeof categoryId === 'string' && categoryId !== 'all' && categoryId.trim() !== '') {
+      whereConditions.push(Prisma.sql`i."categoryId" = ${categoryId.trim()}`);
+    }
+
+    // 3. Text Search over Name, SKU, and Description
     if (search && typeof search === 'string' && search.trim() !== '') {
-      const q = search.trim();
-      whereClause.OR = [
-        { name: { contains: q, mode: 'insensitive' } },
-        { sku: { contains: q, mode: 'insensitive' } },
-        { description: { contains: q, mode: 'insensitive' } },
-      ];
+      const q = `%${search.trim()}%`;
+      whereConditions.push(Prisma.sql`(i.name ILIKE ${q} OR i.sku ILIKE ${q} OR COALESCE(i.description, '') ILIKE ${q})`);
     }
 
-    const items = await prisma.item.findMany({
-      where: whereClause,
-      include: {
-        category: true,
-        _count: {
-          select: { movements: true, timeline: true },
-        },
-      },
-      orderBy: [{ isArchived: 'asc' }, { name: 'asc' }],
-    });
+    // 4. Low-Stock Filter (at or below reorder level)
+    if (lowStockOnly === 'true' || lowStockOnly === '1') {
+      whereConditions.push(Prisma.sql`COALESCE(sb."onHand", 0) <= i."reorderLevel"`);
+    }
 
-    // Derive on-hand stock position from append-only movements for all items in 2 queries
-    const itemIds = items.map((it) => it.id);
-    const [incoming, outgoing] = await Promise.all([
-      prisma.stockMovement.groupBy({
-        by: ['itemId'],
-        where: { itemId: { in: itemIds }, destinationLocationId: { not: null } },
-        _sum: { quantity: true },
-      }),
-      prisma.stockMovement.groupBy({
-        by: ['itemId'],
-        where: { itemId: { in: itemIds }, sourceLocationId: { not: null } },
-        _sum: { quantity: true },
-      }),
+    const whereClause =
+      whereConditions.length > 0
+        ? Prisma.sql`WHERE ${Prisma.join(whereConditions, ' AND ')}`
+        : Prisma.empty;
+
+    // 5. Server-side Sorting
+    const validSortColumns: Record<string, string> = {
+      name: 'LOWER(i.name)',
+      sku: 'LOWER(i.sku)',
+      reorderLevel: 'i."reorderLevel"',
+      onHand: 'COALESCE(sb."onHand", 0)',
+      createdAt: 'i."createdAt"',
+    };
+
+    const requestedSort = typeof sortBy === 'string' ? sortBy.trim() : 'name';
+    const sortColumn = validSortColumns[requestedSort] || 'LOWER(i.name)';
+
+    let orderDirection = 'ASC';
+    if (sortOrder && typeof sortOrder === 'string') {
+      orderDirection = sortOrder.trim().toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
+    } else if (requestedSort === 'onHand' || requestedSort === 'createdAt') {
+      orderDirection = 'DESC';
+    }
+
+    const orderByClause = Prisma.raw(`ORDER BY ${sortColumn} ${orderDirection}, i.id ASC`);
+
+    // 6. Pagination Calculations
+    const isAll = all === 'true' || limit === 'all';
+    const pageNum = Math.max(1, parseInt(page as string, 10) || 1);
+    const limitNum = isAll ? 1000 : Math.min(100, Math.max(1, parseInt(limit as string, 10) || 12));
+    const offset = isAll ? 0 : (pageNum - 1) * limitNum;
+
+    // Execute paginated retrieval and total count queries in parallel
+    const [rawItems, countResult] = await Promise.all([
+      prisma.$queryRaw<any[]>(Prisma.sql`
+        ${balanceCte}
+        SELECT 
+          i.id,
+          i.sku,
+          i.name,
+          i.description,
+          i.uom,
+          i."reorderLevel",
+          i."categoryId",
+          i."isArchived",
+          i."createdAt",
+          i."updatedAt",
+          json_build_object('id', c.id, 'name', c.name) AS category,
+          COALESCE(sb."onHand", 0)::int AS "totalOnHand",
+          (COALESCE(sb."onHand", 0) <= i."reorderLevel") AS "isLowStock"
+        FROM items i
+        JOIN categories c ON c.id = i."categoryId"
+        LEFT JOIN stock_balances sb ON sb."itemId" = i.id
+        ${whereClause}
+        ${orderByClause}
+        LIMIT ${limitNum} OFFSET ${offset}
+      `),
+      prisma.$queryRaw<[{ total: number }]>(Prisma.sql`
+        ${balanceCte}
+        SELECT COUNT(*)::int AS total
+        FROM items i
+        JOIN categories c ON c.id = i."categoryId"
+        LEFT JOIN stock_balances sb ON sb."itemId" = i.id
+        ${whereClause}
+      `),
     ]);
 
-    const inMap = new Map(incoming.map((i) => [i.itemId, i._sum.quantity || 0]));
-    const outMap = new Map(outgoing.map((o) => [o.itemId, o._sum.quantity || 0]));
+    const total = countResult[0]?.total ? Number(countResult[0].total) : 0;
+    const totalPages = Math.ceil(total / limitNum) || 1;
 
-    const itemsWithStock = items.map((item) => {
-      const onHand = (inMap.get(item.id) || 0) - (outMap.get(item.id) || 0);
-      return {
-        ...item,
-        totalOnHand: onHand,
-        isLowStock: onHand <= item.reorderLevel,
-      };
+    // Optional legacy array format support if explicitly requested
+    if (format === 'array') {
+      return res.json(rawItems);
+    }
+
+    return res.json({
+      items: rawItems,
+      pagination: {
+        total,
+        page: pageNum,
+        limit: limitNum,
+        totalPages,
+        hasPrevPage: pageNum > 1,
+        hasNextPage: pageNum < totalPages,
+      },
     });
-
-    res.json(itemsWithStock);
   } catch (err: any) {
+    console.error('Failed to retrieve items:', err);
     res.status(500).json({ error: 'Failed to retrieve items.', details: err.message });
   }
 });

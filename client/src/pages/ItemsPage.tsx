@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../api';
 import { 
@@ -16,8 +16,38 @@ import {
   Trash2,
   ArrowLeftRight,
   Building2,
-  Package
+  Package,
+  AlertTriangle,
+  MapPin,
+  ArrowUpDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  RotateCcw
 } from 'lucide-react';
+import styles from './ItemsPage.module.css';
+
+interface Location {
+  id: string;
+  name: string;
+  code: string;
+  isActive: boolean;
+}
+
+interface PaginationMetadata {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  hasPrevPage: boolean;
+  hasNextPage: boolean;
+}
+
+interface ItemsApiResponse {
+  items: Item[];
+  pagination: PaginationMetadata;
+}
 
 interface Category {
   id: string;
@@ -67,13 +97,23 @@ export const ItemsPage: React.FC = () => {
   const { user } = useAuth();
   const isManager = user?.role === 'MANAGER';
 
-  // Catalog State
+  // Catalog State (Server-Side Querying, Filtering & Pagination - Requirement 6)
   const [items, setItems] = useState<Item[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedLocation, setSelectedLocation] = useState<string>('all');
   const [archiveFilter, setArchiveFilter] = useState<'active' | 'archived' | 'all'>('active');
+  const [lowStockOnly, setLowStockOnly] = useState(false);
+  const [sortBy, setSortBy] = useState<string>('name');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [page, setPage] = useState<number>(1);
+  const [limit, setLimit] = useState<number>(12);
+  const [total, setTotal] = useState<number>(0);
+  const [totalPages, setTotalPages] = useState<number>(1);
 
   // Modals & Drawers
   const [showAddModal, setShowAddModal] = useState(false);
@@ -137,24 +177,54 @@ export const ItemsPage: React.FC = () => {
     }
   }, [hasActiveModal]);
 
-  const fetchItems = async () => {
+  // Debounce search query changes by 300ms to avoid server spam
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Fetch Items from server-side querying engine (Requirement 6)
+  const fetchItems = useCallback(async () => {
     try {
       setLoading(true);
-      let query = `/items?includeArchived=true`;
+      let query = `/items?page=${page}&limit=${limit}&sortBy=${sortBy}&sortOrder=${sortOrder}`;
+      if (archiveFilter !== 'all') {
+        query += `&archived=${archiveFilter}`;
+      } else {
+        query += `&archived=all`;
+      }
       if (selectedCategory !== 'all') {
-        query += `&categoryId=${selectedCategory}`;
+        query += `&categoryId=${encodeURIComponent(selectedCategory)}`;
       }
-      if (searchQuery.trim()) {
-        query += `&search=${encodeURIComponent(searchQuery.trim())}`;
+      if (selectedLocation !== 'all') {
+        query += `&locationId=${encodeURIComponent(selectedLocation)}`;
       }
-      const data = await apiFetch<Item[]>(query);
-      setItems(data);
+      if (debouncedSearch.trim()) {
+        query += `&search=${encodeURIComponent(debouncedSearch.trim())}`;
+      }
+      if (lowStockOnly) {
+        query += `&lowStockOnly=true`;
+      }
+
+      const data = await apiFetch<ItemsApiResponse | Item[]>(query);
+      if (Array.isArray(data)) {
+        setItems(data);
+        setTotal(data.length);
+        setTotalPages(1);
+      } else {
+        setItems(data.items || []);
+        setTotal(data.pagination?.total ?? (data.items?.length || 0));
+        setTotalPages(data.pagination?.totalPages || 1);
+      }
     } catch (err: any) {
       console.error('Failed to load items:', err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, limit, sortBy, sortOrder, archiveFilter, selectedCategory, selectedLocation, debouncedSearch, lowStockOnly]);
 
   const fetchCategories = async () => {
     try {
@@ -168,18 +238,90 @@ export const ItemsPage: React.FC = () => {
     }
   };
 
+  const fetchLocations = async () => {
+    try {
+      const data = await apiFetch<{ locations: Location[] } | Location[]>('/locations');
+      const list = Array.isArray(data) ? data : (data.locations || []);
+      setLocations(list.filter((loc: Location) => loc.isActive));
+    } catch (err: any) {
+      console.error('Failed to load locations:', err);
+    }
+  };
+
   useEffect(() => {
     fetchCategories();
+    fetchLocations();
   }, []);
 
   useEffect(() => {
     fetchItems();
-  }, [selectedCategory, archiveFilter]);
+  }, [fetchItems]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    fetchItems();
+    setDebouncedSearch(searchQuery);
+    setPage(1);
   };
+
+  const handleClearSearch = () => {
+    setSearchQuery('');
+    setDebouncedSearch('');
+    setPage(1);
+  };
+
+  const handleCategoryChange = (val: string) => {
+    setSelectedCategory(val);
+    setPage(1);
+  };
+
+  const handleLocationChange = (val: string) => {
+    setSelectedLocation(val);
+    setPage(1);
+  };
+
+  const handleArchiveChange = (val: 'active' | 'archived' | 'all') => {
+    setArchiveFilter(val);
+    setPage(1);
+  };
+
+  const handleLowStockToggle = () => {
+    setLowStockOnly((prev) => !prev);
+    setPage(1);
+  };
+
+  const handleSortChange = (val: string) => {
+    const [col, dir] = val.split('-');
+    setSortBy(col);
+    setSortOrder((dir as 'asc' | 'desc') || 'asc');
+    setPage(1);
+  };
+
+  const handleLimitChange = (newLimit: number) => {
+    setLimit(newLimit);
+    setPage(1);
+  };
+
+  const handleResetFilters = () => {
+    setSearchQuery('');
+    setDebouncedSearch('');
+    setSelectedCategory('all');
+    setSelectedLocation('all');
+    setArchiveFilter('active');
+    setLowStockOnly(false);
+    setSortBy('name');
+    setSortOrder('asc');
+    setPage(1);
+  };
+
+  const hasActiveFilters = Boolean(
+    searchQuery.trim() ||
+    selectedCategory !== 'all' ||
+    selectedLocation !== 'all' ||
+    archiveFilter !== 'active' ||
+    lowStockOnly ||
+    sortBy !== 'name' ||
+    sortOrder !== 'asc'
+  );
 
   // Open Add Item Modal
   const handleOpenAdd = () => {
@@ -369,20 +511,33 @@ export const ItemsPage: React.FC = () => {
     }
   };
 
-  // Filter items by active/archived state (memoized for performance)
-  const displayedItems = useMemo(() => {
-    return items.filter(item => {
-      if (archiveFilter === 'active') return !item.isArchived;
-      if (archiveFilter === 'archived') return item.isArchived;
-      return true;
-    });
-  }, [items, archiveFilter]);
+  // Active warehouse location lookup
+  const activeLocationObj = locations.find((l) => l.id === selectedLocation);
+
+  // Smart page pill generator for pagination bar
+  const getPageNumbers = (current: number, max: number): (number | string)[] => {
+    if (max <= 5) {
+      return Array.from({ length: max }, (_, i) => i + 1);
+    }
+    const pages: (number | string)[] = [];
+    if (current <= 3) {
+      pages.push(1, 2, 3, 4, '...', max);
+    } else if (current >= max - 2) {
+      pages.push(1, '...', max - 3, max - 2, max - 1, max);
+    } else {
+      pages.push(1, '...', current - 1, current, current + 1, '...', max);
+    }
+    return pages;
+  };
+
+  // Items are directly driven by server query engine (Requirement 6)
+  const displayedItems = items;
 
   return (
-    <div style={{ maxWidth: 1400, margin: '0 auto', padding: '1.5rem 1rem' }}>
+    <div className={styles.catalogPageContainer}>
       
       {/* Top Header & Overview */}
-      <div className="catalog-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
+      <div className={styles.catalogHeader} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
             <h1 style={{ fontSize: '1.6rem', fontWeight: 800, letterSpacing: '-0.02em', margin: 0 }}>
@@ -395,12 +550,12 @@ export const ItemsPage: React.FC = () => {
         </div>
 
         {/* Action Controls */}
-        <div className="catalog-header-actions" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <div className={styles.catalogHeaderActions} style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           {isManager && (
             <>
               <button 
                 onClick={() => setShowCategoryModal(true)} 
-                className="btn btn-secondary catalog-action-btn"
+                className={`btn btn-secondary ${styles.catalogActionBtn}`}
                 style={{ fontSize: '0.85rem' }}
               >
                 <Layers size={16} />
@@ -409,7 +564,7 @@ export const ItemsPage: React.FC = () => {
 
               <button 
                 onClick={handleOpenAdd} 
-                className="btn btn-primary catalog-action-btn"
+                className={`btn btn-primary ${styles.catalogActionBtn}`}
                 style={{ fontSize: '0.85rem' }}
               >
                 <Plus size={16} />
@@ -439,126 +594,203 @@ export const ItemsPage: React.FC = () => {
         </div>
       )}
 
-      {/* Filter and Search Bar */}
-      <div className="glass-panel" style={{ padding: '1rem', marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
-          
-          {/* Search Form */}
-          <form onSubmit={handleSearchSubmit} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: '1 1 260px', maxWidth: 480, minWidth: 0 }}>
+      {/* Filter and Search Bar (Sprint 4: Multi-Criteria Server Querying - Req 6) */}
+      <div className={`glass-panel ${styles.catalogFilterContainer}`}>
+        {/* Row 1: Search Form + Archived Segment + Low Stock Toggle */}
+        <div className={styles.catalogSearchRow}>
+          {/* Search Form with Debounce & Clear Button */}
+          <form onSubmit={handleSearchSubmit} className={styles.catalogSearchBox} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <div style={{ position: 'relative', width: '100%' }}>
               <Search size={16} color="var(--text-muted)" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
               <input
                 type="text"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setPage(1);
+                }}
                 placeholder="Search SKU, item name, or description..."
                 className="form-input"
-                style={{ paddingLeft: '2.25rem', fontSize: '0.875rem' }}
+                style={{ paddingLeft: '2.25rem', paddingRight: searchQuery ? '2rem' : '0.85rem', fontSize: '0.875rem' }}
               />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={handleClearSearch}
+                  style={{
+                    position: 'absolute',
+                    right: 8,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--text-muted)',
+                    cursor: 'pointer',
+                    padding: '0.2rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                  }}
+                  title="Clear search"
+                >
+                  <X size={14} />
+                </button>
+              )}
             </div>
             <button type="submit" className="btn btn-secondary" style={{ padding: '0.55rem 0.9rem', flexShrink: 0 }}>
               Search
             </button>
           </form>
 
-          {/* Active / Archived Pill Selector */}
-          <div className="filter-segmented-group" style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-surface-elevated)', borderRadius: 8, padding: '0.2rem', border: '1px solid var(--border-subtle)' }}>
+          {/* Archived Segmented Group & Low Stock Button */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+            {/* Low-Stock Toggle Button (Requirement 6) */}
             <button
-              onClick={() => setArchiveFilter('active')}
-              className="filter-segment-btn"
-              style={{
-                padding: '0.35rem 0.75rem',
-                fontSize: '0.8rem',
-                fontWeight: 600,
-                borderRadius: 6,
-                border: 'none',
-                cursor: 'pointer',
-                background: archiveFilter === 'active' ? 'var(--accent-primary)' : 'transparent',
-                color: archiveFilter === 'active' ? '#fff' : 'var(--text-muted)',
-                transition: 'all 0.15s ease'
-              }}
+              type="button"
+              onClick={handleLowStockToggle}
+              className={`${styles.catalogLowStockBtn} ${lowStockOnly ? styles.catalogLowStockBtnActive : styles.catalogLowStockBtnInactive}`}
+              title="Filter items at or below reorder threshold"
             >
-              Active Items
+              <AlertTriangle size={15} color={lowStockOnly ? '#f87171' : 'var(--status-warning-text)'} />
+              <span>Low Stock Only</span>
             </button>
-            <button
-              onClick={() => setArchiveFilter('archived')}
-              className="filter-segment-btn"
-              style={{
-                padding: '0.35rem 0.75rem',
-                fontSize: '0.8rem',
-                fontWeight: 600,
-                borderRadius: 6,
-                border: 'none',
-                cursor: 'pointer',
-                background: archiveFilter === 'archived' ? 'var(--accent-primary)' : 'transparent',
-                color: archiveFilter === 'archived' ? '#fff' : 'var(--text-muted)',
-                transition: 'all 0.15s ease'
-              }}
-            >
-              Archived Items
-            </button>
-            <button
-              onClick={() => setArchiveFilter('all')}
-              className="filter-segment-btn"
-              style={{
-                padding: '0.35rem 0.75rem',
-                fontSize: '0.8rem',
-                fontWeight: 600,
-                borderRadius: 6,
-                border: 'none',
-                cursor: 'pointer',
-                background: archiveFilter === 'all' ? 'var(--accent-primary)' : 'transparent',
-                color: archiveFilter === 'all' ? '#fff' : 'var(--text-muted)',
-                transition: 'all 0.15s ease'
-              }}
-            >
-              All
-            </button>
+
+            {/* Active / Archived Pill Selector */}
+            <div className={styles.filterSegmentedGroup} style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-surface-elevated)', borderRadius: 8, padding: '0.2rem', border: '1px solid var(--border-subtle)' }}>
+              <button
+                type="button"
+                onClick={() => handleArchiveChange('active')}
+                className={`${styles.filterSegmentBtn} ${archiveFilter === 'active' ? styles.filterSegmentBtnActive : ''}`}
+                style={{
+                  padding: '0.35rem 0.75rem',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  borderRadius: 6,
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: archiveFilter === 'active' ? 'var(--accent-primary)' : 'transparent',
+                  color: archiveFilter === 'active' ? '#fff' : 'var(--text-muted)',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                Active
+              </button>
+              <button
+                type="button"
+                onClick={() => handleArchiveChange('archived')}
+                className={`${styles.filterSegmentBtn} ${archiveFilter === 'archived' ? styles.filterSegmentBtnActive : ''}`}
+                style={{
+                  padding: '0.35rem 0.75rem',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  borderRadius: 6,
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: archiveFilter === 'archived' ? 'var(--accent-primary)' : 'transparent',
+                  color: archiveFilter === 'archived' ? '#fff' : 'var(--text-muted)',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                Archived
+              </button>
+              <button
+                type="button"
+                onClick={() => handleArchiveChange('all')}
+                className={`${styles.filterSegmentBtn} ${archiveFilter === 'all' ? styles.filterSegmentBtnActive : ''}`}
+                style={{
+                  padding: '0.35rem 0.75rem',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  borderRadius: 6,
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: archiveFilter === 'all' ? 'var(--accent-primary)' : 'transparent',
+                  color: archiveFilter === 'all' ? '#fff' : 'var(--text-muted)',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                All
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Category Dropdown Selector (User Requested) */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: '0.75rem',
-          borderTop: '1px solid var(--border-subtle)',
-          paddingTop: '0.75rem'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Layers size={16} color="var(--accent-primary)" />
-            <label htmlFor="category-select" style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              Category
-            </label>
+        {/* Row 2: Category, Location, and Sort Dropdowns + Reset Button */}
+        <div className={styles.catalogControlsRow}>
+          <div className={styles.catalogFiltersGroup}>
+            {/* Category Dropdown */}
+            <div className={styles.catalogFilterItem}>
+              <Layers size={15} color="var(--accent-primary)" style={{ flexShrink: 0 }} />
+              <select
+                id="category-select"
+                aria-label="Filter by Category"
+                value={selectedCategory}
+                onChange={(e) => handleCategoryChange(e.target.value)}
+              >
+                <option value="all">All Categories</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name} {cat._count?.items !== undefined ? `(${cat._count.items})` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Warehouse Location Dropdown */}
+            <div className={styles.catalogFilterItem}>
+              <MapPin size={15} color="#06b6d4" style={{ flexShrink: 0 }} />
+              <select
+                id="location-select"
+                aria-label="Filter by Warehouse Location"
+                value={selectedLocation}
+                onChange={(e) => handleLocationChange(e.target.value)}
+              >
+                <option value="all">All Locations (Company Total)</option>
+                {locations.map((loc) => (
+                  <option key={loc.id} value={loc.id}>
+                    {loc.name} ({loc.code})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Sort Dropdown */}
+            <div className={styles.catalogFilterItem}>
+              <ArrowUpDown size={15} color="#c084fc" style={{ flexShrink: 0 }} />
+              <select
+                id="sort-select"
+                aria-label="Sort catalog items"
+                value={`${sortBy}-${sortOrder}`}
+                onChange={(e) => handleSortChange(e.target.value)}
+              >
+                <option value="name-asc">Sort: Name (A → Z)</option>
+                <option value="name-desc">Sort: Name (Z → A)</option>
+                <option value="onHand-desc">Sort: Stock (High → Low)</option>
+                <option value="onHand-asc">Sort: Stock (Low → High)</option>
+                <option value="reorderLevel-desc">Sort: Reorder (High → Low)</option>
+                <option value="reorderLevel-asc">Sort: Reorder (Low → High)</option>
+                <option value="sku-asc">Sort: SKU (A → Z)</option>
+              </select>
+            </div>
           </div>
 
-          <div style={{ minWidth: 180, maxWidth: 340, flex: '0 1 340px' }}>
-            <select
-              id="category-select"
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="form-input"
+          {/* Reset Filters Shortcut */}
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={handleResetFilters}
+              className="btn btn-secondary"
               style={{
-                padding: '0.45rem 0.75rem',
-                fontSize: '0.85rem',
-                cursor: 'pointer',
-                fontWeight: 600,
-                background: 'var(--bg-surface-elevated)',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: 8,
-                color: 'var(--text-primary)'
+                padding: '0.4rem 0.75rem',
+                fontSize: '0.78rem',
+                color: 'var(--text-secondary)',
+                alignSelf: 'center',
               }}
+              title="Reset all search queries and active filters"
             >
-              <option value="all">All Categories ({items.length} total items)</option>
-              {categories.map((cat) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.name} {cat._count?.items !== undefined ? `(${cat._count.items})` : ''}
-                </option>
-              ))}
-            </select>
-          </div>
+              <RotateCcw size={13} />
+              Reset Filters
+            </button>
+          )}
         </div>
       </div>
 
@@ -584,15 +816,11 @@ export const ItemsPage: React.FC = () => {
           )}
         </div>
       ) : (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-          gap: '1.25rem'
-        }}>
+        <div className={styles.catalogItemsGrid}>
           {displayedItems.map((item) => (
             <div 
               key={item.id} 
-              className="glass-panel item-card card-hover"
+              className={`glass-panel card-hover ${styles.itemCard}`}
               onClick={() => openTimeline(item)}
               style={{
                 cursor: 'pointer',
@@ -608,7 +836,7 @@ export const ItemsPage: React.FC = () => {
                     {item.sku}
                   </span>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
                     <span style={{
                       fontSize: '0.7rem',
                       fontWeight: 600,
@@ -618,8 +846,21 @@ export const ItemsPage: React.FC = () => {
                       borderRadius: 6,
                       border: '1px solid var(--border-subtle)'
                     }}>
-                      {item.category.name}
+                      {item.category?.name || 'Uncategorized'}
                     </span>
+                    {activeLocationObj && (
+                      <span style={{
+                        fontSize: '0.7rem',
+                        fontWeight: 600,
+                        background: 'rgba(6, 182, 212, 0.15)',
+                        color: '#38bdf8',
+                        padding: '0.2rem 0.5rem',
+                        borderRadius: 6,
+                        border: '1px solid rgba(6, 182, 212, 0.35)'
+                      }}>
+                        📍 {activeLocationObj.code}
+                      </span>
+                    )}
                     {item.isArchived && (
                       <span className="badge" style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
                         Archived
@@ -643,30 +884,30 @@ export const ItemsPage: React.FC = () => {
                 </p>
 
                 {/* Specs Box */}
-                <div className="item-spec-box" style={{ gridTemplateColumns: '1fr 1fr 1.2fr' }}>
+                <div className={styles.itemSpecBox}>
                   <div>
-                    <div className="item-spec-label">
+                    <div className={styles.itemSpecLabel}>
                       UOM
                     </div>
-                    <div className="item-spec-value">
+                    <div className={styles.itemSpecValue}>
                       {item.uom}
                     </div>
                   </div>
 
                   <div>
-                    <div className="item-spec-label">
+                    <div className={styles.itemSpecLabel}>
                       Reorder
                     </div>
-                    <div className="item-spec-value" style={{ color: '#f59e0b' }}>
+                    <div className={styles.itemSpecValue} style={{ color: '#f59e0b' }}>
                       {item.reorderLevel}
                     </div>
                   </div>
 
                   <div>
-                    <div className="item-spec-label">
-                      On Hand
+                    <div className={styles.itemSpecLabel}>
+                      {activeLocationObj ? `At ${activeLocationObj.code}` : 'On Hand'}
                     </div>
-                    <div className="item-spec-value" style={{ 
+                    <div className={styles.itemSpecValue} style={{ 
                       color: item.totalOnHand !== undefined 
                         ? (item.totalOnHand <= item.reorderLevel ? '#f87171' : '#34d399')
                         : 'var(--text-primary)',
@@ -722,6 +963,102 @@ export const ItemsPage: React.FC = () => {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Server-Side Pagination Bar (Sprint 4 / Requirement 6) */}
+      {total > 0 && (
+        <div className={`glass-panel ${styles.paginationBar}`}>
+          <div className={styles.paginationInfo}>
+            <span>
+              Showing <strong>{(page - 1) * limit + 1}</strong>–<strong>{Math.min(page * limit, total)}</strong> of{' '}
+              <strong>{total}</strong> items
+            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginLeft: '0.5rem' }}>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Show:</span>
+              <select
+                aria-label="Items per page"
+                value={limit}
+                onChange={(e) => handleLimitChange(Number(e.target.value))}
+                className="form-select"
+                style={{
+                  padding: '0.25rem 0.5rem',
+                  fontSize: '0.8rem',
+                  borderRadius: 6,
+                  background: 'var(--bg-surface-elevated)',
+                  border: '1px solid var(--border-subtle)',
+                  color: 'var(--text-primary)',
+                  cursor: 'pointer',
+                  width: 'auto',
+                }}
+              >
+                <option value={12}>12 / page</option>
+                <option value={24}>24 / page</option>
+                <option value={48}>48 / page</option>
+              </select>
+            </div>
+          </div>
+
+          <div className={styles.paginationControls}>
+            <button
+              type="button"
+              className={styles.paginationBtn}
+              disabled={page <= 1 || loading}
+              onClick={() => setPage(1)}
+              title="First Page"
+            >
+              <ChevronsLeft size={16} />
+            </button>
+            <button
+              type="button"
+              className={styles.paginationBtn}
+              disabled={page <= 1 || loading}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              title="Previous Page"
+            >
+              <ChevronLeft size={16} />
+            </button>
+
+            {getPageNumbers(page, totalPages).map((p, idx) =>
+              p === '...' ? (
+                <span
+                  key={`ellipsis-${idx}`}
+                  style={{ padding: '0 0.35rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}
+                >
+                  …
+                </span>
+              ) : (
+                <button
+                  key={`page-${p}`}
+                  type="button"
+                  className={`${styles.paginationBtn} ${page === p ? styles.paginationBtnActive : ''}`}
+                  disabled={loading}
+                  onClick={() => setPage(Number(p))}
+                >
+                  {p}
+                </button>
+              )
+            )}
+
+            <button
+              type="button"
+              className={styles.paginationBtn}
+              disabled={page >= totalPages || loading}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              title="Next Page"
+            >
+              <ChevronRight size={16} />
+            </button>
+            <button
+              type="button"
+              className={styles.paginationBtn}
+              disabled={page >= totalPages || loading}
+              onClick={() => setPage(totalPages)}
+              title="Last Page"
+            >
+              <ChevronsRight size={16} />
+            </button>
+          </div>
         </div>
       )}
 
@@ -1018,7 +1355,7 @@ export const ItemsPage: React.FC = () => {
           }}
         >
           <div 
-            className="glass-panel modal-responsive-panel" 
+            className={`glass-panel ${styles.modalResponsivePanel}`} 
             onClick={(e) => e.stopPropagation()}
             style={{
               width: '100%',
@@ -1059,13 +1396,13 @@ export const ItemsPage: React.FC = () => {
                 </span>
               </div>
 
-              {/* Sub-Tabs */}
-              <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.75rem' }}>
+              {/* Sub-Tabs: Responsive Desktop Pill Buttons + Mobile Select Dropdown */}
+              <div className={styles.detailTabsDesktop}>
                 <button
                   type="button"
                   onClick={() => setDetailTab('TIMELINE')}
                   className={`btn ${detailTab === 'TIMELINE' ? 'btn-primary' : 'btn-secondary'}`}
-                  style={{ fontSize: '0.75rem', padding: '0.35rem 0.75rem' }}
+                  style={{ fontSize: '0.75rem', padding: '0.35rem 0.75rem', flex: '1 1 auto', whiteSpace: 'nowrap' }}
                 >
                   <History size={14} />
                   <span>Audit Timeline</span>
@@ -1074,7 +1411,7 @@ export const ItemsPage: React.FC = () => {
                   type="button"
                   onClick={() => setDetailTab('LOCATIONS')}
                   className={`btn ${detailTab === 'LOCATIONS' ? 'btn-primary' : 'btn-secondary'}`}
-                  style={{ fontSize: '0.75rem', padding: '0.35rem 0.75rem' }}
+                  style={{ fontSize: '0.75rem', padding: '0.35rem 0.75rem', flex: '1 1 auto', whiteSpace: 'nowrap' }}
                 >
                   <Building2 size={14} />
                   <span>Warehouse Stock</span>
@@ -1083,11 +1420,29 @@ export const ItemsPage: React.FC = () => {
                   type="button"
                   onClick={() => setDetailTab('MOVEMENTS')}
                   className={`btn ${detailTab === 'MOVEMENTS' ? 'btn-primary' : 'btn-secondary'}`}
-                  style={{ fontSize: '0.75rem', padding: '0.35rem 0.75rem' }}
+                  style={{ fontSize: '0.75rem', padding: '0.35rem 0.75rem', flex: '1 1 auto', whiteSpace: 'nowrap' }}
                 >
                   <ArrowLeftRight size={14} />
                   <span>Movement Ledger ({itemMovements.length})</span>
                 </button>
+              </div>
+
+              {/* Mobile Viewport Tab Dropdown (<= 520px) */}
+              <div className={styles.detailTabsMobile}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0, color: 'var(--accent-primary)' }}>
+                  {detailTab === 'TIMELINE' && <History size={16} />}
+                  {detailTab === 'LOCATIONS' && <Building2 size={16} />}
+                  {detailTab === 'MOVEMENTS' && <ArrowLeftRight size={16} />}
+                </div>
+                <select
+                  value={detailTab}
+                  onChange={(e) => setDetailTab(e.target.value as any)}
+                  aria-label="Select item detail tab"
+                >
+                  <option value="TIMELINE">Audit Timeline ({timelineEvents.length})</option>
+                  <option value="LOCATIONS">Warehouse Stock Breakdown</option>
+                  <option value="MOVEMENTS">Movement Ledger ({itemMovements.length})</option>
+                </select>
               </div>
             </div>
 
@@ -1128,7 +1483,7 @@ export const ItemsPage: React.FC = () => {
                       No timeline events found.
                     </div>
                   ) : (
-                    <div className="timeline-stream-container" style={{ position: 'relative', paddingLeft: '1.25rem', borderLeft: '2px solid rgba(99, 102, 241, 0.25)', marginLeft: '0.5rem', minWidth: 0 }}>
+                    <div className={styles.timelineStreamContainer} style={{ position: 'relative', paddingLeft: '1.25rem', borderLeft: '2px solid rgba(99, 102, 241, 0.25)', marginLeft: '0.5rem', minWidth: 0 }}>
                       {timelineEvents.map((ev) => {
                         const isCreated = ev.eventType === 'CREATED';
                         const isFieldChange = ev.eventType === 'FIELD_CHANGE';
@@ -1149,7 +1504,7 @@ export const ItemsPage: React.FC = () => {
                               border: '2px solid var(--bg-surface)'
                             }} />
 
-                            <div className="timeline-event-card">
+                            <div className={styles.timelineEventCard}>
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', marginBottom: '0.4rem', minWidth: 0 }}>
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.35rem', minWidth: 0 }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap', minWidth: 0 }}>
