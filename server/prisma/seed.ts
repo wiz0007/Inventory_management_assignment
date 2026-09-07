@@ -419,6 +419,74 @@ async function main() {
     }
   }
 
+  // Seed 8-Week Historical Velocity Data for Dashboard Trends (Requirement 8)
+  const historicalSeedCount = await prisma.stockMovement.count({
+    where: { reason: { startsWith: 'Historical weekly' } },
+  });
+
+  if (historicalSeedCount === 0) {
+    console.log('📈 Seeding 8-week historical movement trends data...');
+    const now = Date.now();
+    const DAY_MS = 24 * 60 * 60 * 1000;
+
+    // Pick top high-volume items to simulate realistic movement activity
+    const activeItems = await prisma.item.findMany({
+      where: { isArchived: false, sku: { in: ['ELEC-CAB-101', 'FAST-SCR-201', 'SAFE-GLV-301'] } },
+    });
+
+    if (activeItems.length > 0) {
+      // 7 weeks of historical activity (weeks 1 to 7 in the past)
+      const weeklyVolumes = [
+        { weekAgo: 7, receipts: 120, issues: 75 },
+        { weekAgo: 6, receipts: 95, issues: 80 },
+        { weekAgo: 5, receipts: 140, issues: 110 },
+        { weekAgo: 4, receipts: 110, issues: 90 },
+        { weekAgo: 3, receipts: 160, issues: 135 },
+        { weekAgo: 2, receipts: 130, issues: 105 },
+        { weekAgo: 1, receipts: 175, issues: 140 },
+      ];
+
+      for (const weekData of weeklyVolumes) {
+        const weekDate = new Date(now - weekData.weekAgo * 7 * DAY_MS + 2 * DAY_MS);
+
+        // Simulate receipts for items
+        for (let idx = 0; idx < activeItems.length; idx++) {
+          const it = activeItems[idx];
+          const qty = Math.round(weekData.receipts / activeItems.length);
+          await prisma.stockMovement.create({
+            data: {
+              itemId: it.id,
+              type: 'RECEIPT',
+              quantity: qty,
+              destinationLocationId: locMain.id,
+              userId: manager.id,
+              reason: `Historical weekly procurement restock (Week -${weekData.weekAgo})`,
+              createdAt: new Date(weekDate.getTime() + idx * 3600000 * 4),
+            },
+          });
+        }
+
+        // Simulate customer outbound issues for items
+        for (let idx = 0; idx < activeItems.length; idx++) {
+          const it = activeItems[idx];
+          const qty = Math.round(weekData.issues / activeItems.length);
+          await prisma.stockMovement.create({
+            data: {
+              itemId: it.id,
+              type: 'ISSUE',
+              quantity: qty,
+              sourceLocationId: locMain.id,
+              userId: staff1.id,
+              reason: `Historical weekly contractor dispatch (Week -${weekData.weekAgo})`,
+              createdAt: new Date(weekDate.getTime() + 86400000 + idx * 3600000 * 3),
+            },
+          });
+        }
+      }
+      console.log('✅ Successfully seeded 8-week historical velocity trends!');
+    }
+  }
+
   console.log(`✅ Seeded ${sampleItemsData.length} catalog items with realistic stock positions and alert states!`);
   console.log('🎉 Baseline & Sample Seed completed successfully!');
 }

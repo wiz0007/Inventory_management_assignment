@@ -1,0 +1,997 @@
+/* DashboardPage Scoped Styles */
+
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 1.5rem;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+/* Header Area */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.titleArea {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.title {
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  background: linear-gradient(135deg, #fff 0%, #cbd5e1 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 0.35rem;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.title svg {
+  flex-shrink: 0;
+  color: var(--accent-primary);
+}
+
+.subtitle {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.refreshBtn {
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  padding: 0.55rem 1rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.refreshBtn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.refreshBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.lastUpdated {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* 4 Headline KPI Cards */
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.kpiCard {
+  background: var(--bg-surface-glass);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.kpiCard::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: transparent;
+  transition: background 0.22s ease;
+}
+
+.kpiCard:hover {
+  transform: translateY(-3px);
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 12px 28px -8px rgba(0, 0, 0, 0.5), 0 0 20px rgba(99, 102, 241, 0.12);
+}
+
+.kpiCardPrimary:hover::before {
+  background: var(--accent-gradient);
+}
+
+.kpiCardWarning:hover::before {
+  background: linear-gradient(90deg, #f59e0b, #ef4444);
+}
+
+.kpiCardSuccess:hover::before {
+  background: linear-gradient(90deg, #10b981, #06b6d4);
+}
+
+.kpiCardInfo:hover::before {
+  background: linear-gradient(90deg, #8b5cf6, #3b82f6);
+}
+
+.kpiTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+  gap: 0.5rem;
+}
+
+.kpiIconWrapper {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.kpiBadge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.2rem 0.55rem;
+  border-radius: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  white-space: nowrap;
+}
+
+.kpiMain {
+  margin-bottom: 0.75rem;
+  min-width: 0;
+}
+
+.kpiValue {
+  font-size: 2.1rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kpiLabel {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+  margin-top: 0.3rem;
+  line-height: 1.3;
+}
+
+.kpiFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 0.65rem;
+  margin-top: auto;
+  gap: 0.5rem;
+}
+
+.kpiFooterLink {
+  color: var(--accent-secondary);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  transition: gap 0.15s ease;
+  white-space: nowrap;
+}
+
+.kpiCard:hover .kpiFooterLink {
+  gap: 0.4rem;
+}
+
+/* 2-Column Visualizations Section */
+.vizGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.vizCard {
+  background: var(--bg-surface-glass);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.vizHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+  gap: 1rem;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.vizTitle {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.vizTitle svg {
+  color: var(--accent-primary);
+  flex-shrink: 0;
+}
+
+.vizSubtitle {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 0.2rem;
+  line-height: 1.4;
+}
+
+.vizBadge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: rgba(99, 102, 241, 0.12);
+  color: #a5b4fc;
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+/* Donut Chart Layout */
+.donutContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.donutSvgWrapper {
+  position: relative;
+  width: 200px;
+  height: 200px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.donutSvg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.donutSegment {
+  cursor: pointer;
+  transition: stroke-width 0.2s ease, opacity 0.2s ease, filter 0.2s ease;
+}
+
+.donutSegment:hover,
+.donutSegmentActive {
+  stroke-width: 26px !important;
+  filter: drop-shadow(0 0 8px rgba(99, 102, 241, 0.6));
+  opacity: 1 !important;
+}
+
+.donutCenter {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  pointer-events: none;
+  width: 110px;
+}
+
+.donutCenterValue {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.donutCenterLabel {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-top: 0.35rem;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.donutCenterSub {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--accent-secondary);
+  margin-top: 0.15rem;
+}
+
+/* Donut Legend */
+.legendList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.45rem 0.65rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  gap: 0.5rem;
+}
+
+.legendItem:hover,
+.legendItemActive {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
+  transform: translateX(3px);
+}
+
+.legendLeft {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.legendDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.legendName {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.legendCount {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.legendRight {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.legendUnits {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.legendPercent {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  min-width: 44px;
+  text-align: right;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Location Distribution Bars (Stock by Warehouse Location) */
+.locationList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+}
+
+.locationItem {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  padding: 1rem;
+  transition: all 0.2s ease;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.locationItem:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.12);
+  transform: translateY(-1px);
+}
+
+.locationHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.6rem;
+  gap: 0.75rem;
+  min-width: 0;
+  width: 100%;
+}
+
+.locationTitleArea {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.locationCode {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.2rem 0.45rem;
+  border-radius: 5px;
+  background: rgba(99, 102, 241, 0.15);
+  color: #a5b4fc;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  flex-shrink: 0;
+}
+
+.locationName {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.locationStats {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.locationUnits {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.locationUnitLabel {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.locationPercent {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--accent-secondary);
+}
+
+.barTrack {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+  overflow: hidden;
+  position: relative;
+  margin-bottom: 0.4rem;
+  width: 100%;
+}
+
+.barFill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #6366f1 0%, #06b6d4 100%);
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.locationMeta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* 8-Week Trend Chart Section */
+.trendSection {
+  background: var(--bg-surface-glass);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.trendHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.trendSummaryGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.75rem;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.trendSummaryCard {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.trendSummaryLabel {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.03em;
+  margin-bottom: 0.25rem;
+}
+
+.trendSummaryValue {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  font-family: 'JetBrains Mono', monospace;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trendSummarySub {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  margin-top: 0.2rem;
+}
+
+/* Trend SVG Chart */
+.chartContainer {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  position: relative;
+  padding-bottom: 0.5rem;
+}
+
+.chartSvg {
+  width: 100%;
+  min-width: 520px;
+  height: 240px;
+  display: block;
+}
+
+.chartLegend {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  flex-wrap: wrap;
+}
+
+.chartLegendItem {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.chartLegendSwatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+/* Hover Detail Card for Selected Week */
+.weekInspectionBox {
+  margin-top: 1.25rem;
+  padding: 0.85rem 1.25rem;
+  border-radius: 10px;
+  background: rgba(99, 102, 241, 0.06);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.weekInspectionTitle {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #c7d2fe;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.weekInspectionMetrics {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.weekInspectionMetric {
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+.weekInspectionMetric strong {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.9rem;
+}
+
+/* Loading & Empty States */
+.loadingBox {
+  padding: 4rem 1.5rem;
+  text-align: center;
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.errorBox {
+  padding: 1.5rem;
+  background: var(--status-danger-bg);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 12px;
+  color: var(--status-danger-text);
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Responsive Breakpoints */
+
+/* Tablet & Intermediate */
+@media (max-width: 1024px) {
+  .kpiGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .vizGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .trendSummaryGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Donut switches to stacked column below 768px for optimal legibility */
+@media (max-width: 768px) {
+  .donutContainer {
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .donutSvgWrapper {
+    width: 180px;
+    height: 180px;
+  }
+}
+
+/* Small Screens & Narrow Docked DevTools (<= 600px) */
+@media (max-width: 600px) {
+  .container {
+    padding: 1rem 0.75rem;
+  }
+
+  /* CRITICAL: Guarantee no empty header void */
+  .titleArea {
+    flex: none !important;
+    width: 100%;
+  }
+
+  .header {
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .title {
+    font-size: 1.35rem;
+  }
+
+  .subtitle {
+    font-size: 0.82rem;
+  }
+
+  .headerActions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .kpiGrid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .kpiCard {
+    padding: 0.85rem;
+    border-radius: 10px;
+  }
+
+  .kpiIconWrapper {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+  }
+
+  .kpiValue {
+    font-size: 1.45rem;
+  }
+
+  .kpiLabel {
+    font-size: 0.72rem;
+  }
+
+  .kpiFooter {
+    display: none;
+  }
+
+  .vizCard {
+    padding: 1rem 0.85rem;
+  }
+
+  /* CRITICAL: Make Warehouse Location header stack vertically to prevent truncation */
+  .locationHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.35rem;
+  }
+
+  .locationTitleArea {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .locationStats {
+    width: 100%;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding-left: 0.15rem;
+  }
+
+  .trendSection {
+    padding: 1rem 0.85rem;
+  }
+
+  .trendSummaryGrid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.6rem;
+  }
+
+  .trendSummaryValue {
+    font-size: 1.1rem;
+  }
+
+  .chartSvg {
+    min-width: 480px;
+    height: 220px;
+  }
+
+  .weekInspectionBox {
+    padding: 0.75rem;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .weekInspectionMetrics {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.6rem 0.75rem;
+    width: 100%;
+  }
+
+  .weekInspectionMetric {
+    white-space: normal;
+    font-size: 0.75rem;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.15rem;
+  }
+}
+
+/* Extra Small Phones (<= 380px) */
+@media (max-width: 380px) {
+  .container {
+    padding: 0.75rem 0.5rem;
+  }
+
+  .kpiGrid {
+    grid-template-columns: 1fr;
+    gap: 0.6rem;
+  }
+
+  .kpiIconWrapper {
+    display: none;
+  }
+
+  .trendSummaryGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .chartSvg {
+    min-width: 420px;
+    height: 200px;
+  }
+
+  .legendItem {
+    padding: 0.35rem 0.45rem;
+  }
+
+  .legendName {
+    font-size: 0.78rem;
+  }
+
+  .legendUnits {
+    font-size: 0.78rem;
+  }
+
+  .legendPercent {
+    font-size: 0.68rem;
+    min-width: 36px;
+    padding: 0.1rem 0.3rem;
+  }
+
+  .locationCode {
+    font-size: 0.65rem;
+    padding: 0.15rem 0.35rem;
+  }
+
+  .locationName {
+    font-size: 0.8rem;
+  }
+
+  .locationUnits {
+    font-size: 0.88rem;
+  }
+
+  .weekInspectionMetrics {
+    grid-template-columns: 1fr;
+  }
+}
