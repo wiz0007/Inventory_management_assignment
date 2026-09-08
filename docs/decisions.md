@@ -112,3 +112,29 @@ Log the decisions that actually shaped this codebase — the ones where a real a
   1. **Operator Efficiency & Granular Visibility:** In real-world enterprise warehouse operations, CSV imports frequently contain hundreds of lines. Aborting an entire batch because row 87 has a typo frustrates operations staff and forces painful manual deduplication. Returning a structured diagnostic table allows the operator to import all valid rows immediately and review specific line-item discrepancies.
   2. **Auditable RBAC Enforcement in Batch Ingestion:** For receipts, staff location assignments are evaluated per row (`requireLocationPermission`). A warehouse lead assigned to `WH-MAIN` can bulk import a shipment containing items for `WH-MAIN`, while any stray row for `STORE-01` is rejected with an RBAC violation without discarding valid stock.
   3. **Zero-Drift Alert Lifecycle:** Permanent dismissals lead to catastrophic stockouts: a manager dismisses an alert for low stock while waiting for a supplier; after the supplier arrives and stock is depleted again weeks later, the manager would never be notified without an automated re-arming state machine. By recording the dismissal snapshot and tracking subsequent ledger movements chronologically, the system mathematically guarantees that any post-dismissal stock recovery re-arms the alert the moment stock drops back into deficit.
+
+---
+
+## Decision 13: Zero Third-Party Chart Library Bloat (Pure SVG) & Responsive Layout Containment (Requirement 8)
+
+- **Chose:** Custom pure SVG mathematical visualizations (Category Donut with `stroke-dasharray` / `stroke-dashoffset` and dual-series 8-week movement volume velocity bars), paired with automatic 2-line layout stacking for warehouse facility cards below 600px.
+- **Rejected:** Heavy third-party visualization libraries like Recharts, Chart.js, or D3.js.
+- **Why:** 
+  1. **Zero Runtime Bloat:** Recharts and Chart.js bundle between 300kB and 500kB of minified JavaScript, slow down initial page loads, and introduce complex canvas/DOM wrapper bugs. Pure SVG requires exactly 0kB of external dependencies.
+  2. **Sub-Pixel Vector Scalability:** Native SVG elements scale proportionally with crisp typography and vibrant gradients across high-DPI displays.
+  3. **Interactive Center Stats:** Using SVG circle arcs allows native mouse hover transitions (`stroke-width`, `filter: drop-shadow`) and dynamic updates to the center counter without complex chart library event adapters.
+  4. **Responsive Stacking:** By transitioning facility cards to a two-line layout below 600px (facility badge & name on line 1, unit counts and percentages on line 2), we completely eliminated aggressive text truncation and clipping on narrow mobile screens and docked browser DevTools.
+
+---
+
+## Decision 14: Client-Side Routing Architecture (`react-router-dom`) with Modular `allRoutes.tsx` Engine
+
+- **Chose:** Full client-side URL routing with `react-router-dom` (v7) and a dedicated, decoupled route configuration module (`client/src/routes/allRoutes.tsx`), synchronizing navigation with browser history and `location.pathname`.
+- **Rejected:** State-only tab switching (`const [currentTab, setCurrentTab] = useState(...)`).
+- **Why:** 
+  1. **Native Browser Navigation:** In a production warehouse management system, operators constantly navigate between the catalog, ledger, and alerts. State-only tabs break the browser's Back (`←`) and Forward (`→`) buttons—clicking Back either exits the application or navigates to an unrelated web page. Client-side routing enables natural history traversal.
+  2. **Page Refresh Persistence:** Refreshing (`F5`) or reopening a tab in a state-based system always resets to the default homepage, frustrating operators who were in the middle of inspecting an alert or transaction. With URL routes (`/alerts`, `/movements`, `/items`), refresh preserves the exact view.
+  3. **Deep Linking & Bookmarking:** Managers and warehouse staff can bookmark or share direct links to specific operational screens.
+  4. **Decoupled Architecture (`allRoutes.tsx`):** Rather than inlining all route definitions inside `App.tsx`, extracting routes into `allRoutes.tsx` keeps the root application shell focused strictly on Providers, Navbar, and layout boundaries, making route additions, guards, and transitions scalable.
+- **Later reversed:** The initial project starter template handled navigation via local `useState` tab switching. While adequate for early prototyping of the schema and API, we recognized its severe UX limitations and deliberately reversed this approach in Sprint 7, refactoring `App.tsx` and `Navbar.tsx` to use full `react-router-dom` client-side routing.
+

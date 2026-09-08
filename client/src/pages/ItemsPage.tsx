@@ -111,7 +111,7 @@ export const ItemsPage: React.FC = () => {
   const [sortBy, setSortBy] = useState<string>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [page, setPage] = useState<number>(1);
-  const [limit, setLimit] = useState<number>(12);
+  const [limit, setLimit] = useState<number>(10);
   const [total, setTotal] = useState<number>(0);
   const [totalPages, setTotalPages] = useState<number>(1);
 
@@ -974,7 +974,10 @@ export const ItemsPage: React.FC = () => {
               Showing <strong>{(page - 1) * limit + 1}</strong>–<strong>{Math.min(page * limit, total)}</strong> of{' '}
               <strong>{total}</strong> items
             </span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginLeft: '0.5rem' }}>
+            <span style={{ marginLeft: '0.6rem', paddingLeft: '0.6rem', borderLeft: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}>
+              Page <strong>{page}</strong> of <strong>{totalPages}</strong>
+            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginLeft: '0.6rem' }}>
               <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Show:</span>
               <select
                 aria-label="Items per page"
@@ -992,9 +995,10 @@ export const ItemsPage: React.FC = () => {
                   width: 'auto',
                 }}
               >
-                <option value={12}>12 / page</option>
-                <option value={24}>24 / page</option>
-                <option value={48}>48 / page</option>
+                <option value={10}>10 / page</option>
+                <option value={15}>15 / page</option>
+                <option value={20}>20 / page</option>
+                <option value={50}>50 / page</option>
               </select>
             </div>
           </div>

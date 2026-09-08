@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../api';
 import { 
@@ -16,7 +17,11 @@ import {
   Package, 
   RefreshCw,
   Zap,
-  Info
+  Info,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight
 } from 'lucide-react';
 import styles from './MovementsPage.module.css';
 
@@ -72,6 +77,7 @@ interface StockMovement {
 
 export const MovementsPage: React.FC = () => {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const isManager = user?.role === 'MANAGER';
 
   // Data states
@@ -85,6 +91,15 @@ export const MovementsPage: React.FC = () => {
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [locationFilter, setLocationFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  // Pagination states
+  const [page, setPage] = useState<number>(1);
+  const [limit, setLimit] = useState<number>(10);
+
+  // Reset to page 1 on filter changes
+  useEffect(() => {
+    setPage(1);
+  }, [typeFilter, locationFilter, searchQuery]);
 
   // Record Movement Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -102,6 +117,33 @@ export const MovementsPage: React.FC = () => {
   // Live stock check for Issue / Transfer / Adjustment
   const [availableStock, setAvailableStock] = useState<number | null>(null);
   const [checkingStock, setCheckingStock] = useState(false);
+
+  // Auto-open modal if URL specifies action=new (e.g. from 1-Click Restock Requisition)
+  useEffect(() => {
+    const action = searchParams.get('action');
+    if (action === 'new') {
+      const type = searchParams.get('type') as any;
+      const itemId = searchParams.get('itemId');
+      const qty = searchParams.get('quantity');
+      const dest = searchParams.get('dest');
+
+      if (type && ['RECEIPT', 'ISSUE', 'TRANSFER', 'ADJUSTMENT'].includes(type)) {
+        setModalType(type);
+      }
+      if (itemId) {
+        setSelectedItemId(itemId);
+      }
+      if (qty && !isNaN(Number(qty))) {
+        setQuantity(Number(qty));
+      }
+      if (dest) {
+        setDestinationLocationId(dest);
+      }
+      setIsModalOpen(true);
+      // Clean query params so refresh does not keep modal re-opening
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   // Fetch initial data
   const fetchData = useCallback(async () => {
@@ -333,6 +375,36 @@ export const MovementsPage: React.FC = () => {
     });
   }, [movements, typeFilter, locationFilter, searchQuery]);
 
+  // Pagination calculation
+  const totalMovements = filteredMovements.length;
+  const totalPages = Math.max(1, Math.ceil(totalMovements / limit));
+
+  const paginatedMovements = useMemo(() => {
+    const start = (page - 1) * limit;
+    return filteredMovements.slice(start, start + limit);
+  }, [filteredMovements, page, limit]);
+
+  const handleLimitChange = (newLimit: number) => {
+    setLimit(newLimit);
+    setPage(1);
+  };
+
+  const getPageNumbers = (current: number, max: number) => {
+    const pages: (number | string)[] = [];
+    if (max <= 5) {
+      for (let i = 1; i <= max; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (current > 3) pages.push('...');
+      const start = Math.max(2, current - 1);
+      const end = Math.min(max - 1, current + 1);
+      for (let i = start; i <= end; i++) pages.push(i);
+      if (current < max - 2) pages.push('...');
+      pages.push(max);
+    }
+    return pages;
+  };
+
   // Statistics counters
   const stats = useMemo(() => {
     let receipts = 0;
@@ -563,7 +635,7 @@ export const MovementsPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredMovements.map((m) => {
+                {paginatedMovements.map((m) => {
                   const dateStr = m.createdAt ? new Date(m.createdAt).toLocaleString(undefined, {
                     month: 'short',
                     day: 'numeric',
@@ -692,6 +764,105 @@ export const MovementsPage: React.FC = () => {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination Bar */}
+          {totalMovements > 0 && (
+            <div className={styles.paginationBar} style={{ borderTop: '1px solid var(--border-subtle)', margin: 0 }}>
+              <div className={styles.paginationInfo}>
+                <span>
+                  Showing <strong>{(page - 1) * limit + 1}</strong>–<strong>{Math.min(page * limit, totalMovements)}</strong> of{' '}
+                  <strong>{totalMovements}</strong> movements
+                </span>
+                <span style={{ marginLeft: '0.6rem', paddingLeft: '0.6rem', borderLeft: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}>
+                  Page <strong>{page}</strong> of <strong>{totalPages}</strong>
+                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginLeft: '0.6rem' }}>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Show:</span>
+                  <select
+                    aria-label="Movements per page"
+                    value={limit}
+                    onChange={(e) => handleLimitChange(Number(e.target.value))}
+                    className="form-select"
+                    style={{
+                      padding: '0.25rem 0.5rem',
+                      fontSize: '0.8rem',
+                      borderRadius: 6,
+                      background: 'var(--bg-surface-elevated)',
+                      border: '1px solid var(--border-subtle)',
+                      color: 'var(--text-primary)',
+                      cursor: 'pointer',
+                      width: 'auto',
+                    }}
+                  >
+                    <option value={10}>10 / page</option>
+                    <option value={15}>15 / page</option>
+                    <option value={20}>20 / page</option>
+                    <option value={50}>50 / page</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className={styles.paginationControls}>
+                <button
+                  type="button"
+                  className={styles.paginationBtn}
+                  disabled={page <= 1}
+                  onClick={() => setPage(1)}
+                  title="First Page"
+                >
+                  <ChevronsLeft size={16} />
+                </button>
+                <button
+                  type="button"
+                  className={styles.paginationBtn}
+                  disabled={page <= 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  title="Previous Page"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+
+                {getPageNumbers(page, totalPages).map((p, idx) =>
+                  p === '...' ? (
+                    <span
+                      key={`ellipsis-${idx}`}
+                      style={{ padding: '0 0.35rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}
+                    >
+                      …
+                    </span>
+                  ) : (
+                    <button
+                      key={`page-${p}`}
+                      type="button"
+                      className={`${styles.paginationBtn} ${page === p ? styles.paginationBtnActive : ''}`}
+                      onClick={() => setPage(Number(p))}
+                    >
+                      {p}
+                    </button>
+                  )
+                )}
+
+                <button
+                  type="button"
+                  className={styles.paginationBtn}
+                  disabled={page >= totalPages}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  title="Next Page"
+                >
+                  <ChevronRight size={16} />
+                </button>
+                <button
+                  type="button"
+                  className={styles.paginationBtn}
+                  disabled={page >= totalPages}
+                  onClick={() => setPage(totalPages)}
+                  title="Last Page"
+                >
+                  <ChevronsRight size={16} />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

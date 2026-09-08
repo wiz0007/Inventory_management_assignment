@@ -2,63 +2,76 @@
 
 ## What are the moving pieces, and how do they talk to each other?
 
-The system is structured as a decoupled client-server architecture with an append-only relational ledger:
+The system is structured as a decoupled client-server architecture centered around an append-only relational stock ledger:
 
 1. **Client (Single-Page Application):**
-   - Built with React, TypeScript, and Vite.
-   - Communicates with the backend exclusively via standard HTTP REST API endpoints using JSON payloads.
-   - Includes client-side session management storing JWT tokens securely, dynamic UI states based on user roles (`MANAGER` vs. `STAFF`), interactive data tables, CSV import/export handlers, and analytical visualisations.
+   - Built with React 19, TypeScript, and Vite.
+   - Client-side routing powered by `react-router-dom` (v7) with a centralized route module (`client/src/routes/allRoutes.tsx`), enabling deep-linking (`/dashboard`, `/items`, `/movements`, `/locations`, `/import-export`, `/alerts`), browser Back/Forward traversal, and page-refresh tab persistence.
+   - Communicates with the backend exclusively via standard HTTP REST API endpoints using JSON payloads with `credentials: 'include'` for automatic `httpOnly` session cookies and `X-Requested-With: StockPulse-Client` for CSRF defense.
+   - Features zero third-party chart library dependencies (pure SVG mathematical Donut and 8-week dual-series movement velocity charts), scoped CSS Modules with localized responsive breakpoints down to 320px, and an ErrorBoundary wrapper.
 
 2. **Server (REST API & Business Logic Engine):**
    - Built with Node.js, Express, and TypeScript.
    - Houses the core business domain logic:
-     - Authentication & Session Verification.
-     - Role-Based Access Control (RBAC) middleware verifying that managers have global scope while warehouse staff are strictly scoped to their assigned locations.
-     - Append-Only Stock Movement Engine verifying atomic transfers, preventing negative stock, and validating adjustment rationale.
-     - Server-side query processor for multi-factor filtering, search, and dynamic sorting by ledger-derived quantities.
-     - CSV parsing and validation pipeline with per-row failure isolation.
+     - Authentication & Session Verification using signed, hardened `httpOnly` cookies (`SameSite=Lax`).
+     - Role-Based Access Control (RBAC) middleware verifying that managers have global scope while warehouse staff are strictly scoped to their assigned locations (`requireLocationPermission`).
+     - Append-Only Stock Movement Engine verifying atomic transfers, preventing negative stock, and validating mandatory adjustment rationale.
+     - Server-side query processor utilizing PostgreSQL Common Table Expressions (CTEs) for multi-factor filtering, text search (`ILIKE`), and dynamic sorting by ledger-derived quantities.
+     - Fault-tolerant CSV bulk engine with per-row failure reports and partial success.
+     - Operational dashboard aggregation pipeline computing headline KPIs, category/location breakdowns, and 8-week movement volume velocity.
+     - Centralized error-sanitization middleware (CWE-209 defense) preventing raw database driver leakages.
 
 3. **Data Layer (PostgreSQL & Prisma ORM):**
    - Stores accounts, locations, staff assignments, categories, items, audit timelines, and the immutable stock ledger.
    - Enforces referential integrity through foreign keys, uniqueness constraints (SKU, location codes, category names), and transaction isolation levels (`SERIALIZABLE` / row locking) to prevent race conditions.
+   - Connects via Supabase's IPv4 connection pooler to guarantee seamless reachability from IPv4-only cloud runtimes like Render.
 
 ```mermaid
 flowchart TD
     subgraph Browser ["Client (Browser)"]
-        UI[React + Vite UI]
-        State[Auth & UI State]
+        Router[React Router v7 / allRoutes]
+        UI[React UI Components]
+        State[Auth Context & UI State]
     end
 
     subgraph Backend ["Server (Node.js / Express)"]
         API[REST API Gateway]
         AuthMid[Auth & RBAC Middleware]
         LedgerService[Append-Only Ledger Engine]
-        QueryService[Server-Side Query & Aggregation]
+        QueryService[Server-Side Query & CTE Aggregation]
+        DashboardService[Analytics & Velocity Aggregator]
+        CSVEngine[Fault-Tolerant CSV Engine]
     end
 
-    subgraph Database ["Data Store (PostgreSQL)"]
+    subgraph Database ["Data Store (PostgreSQL via Supabase Pooler)"]
         DB[(PostgreSQL Database)]
         LedgerTable[("stock_movements (Append-Only)")]
         ItemTable[("items & categories")]
+        TimelineTable[("item_timeline (Append-Only)")]
         UserTable[("users & user_locations")]
     end
 
-    UI -->|HTTPS / REST JSON| API
+    Router --> UI
+    UI -->|HTTPS REST with httpOnly Cookies| API
     API --> AuthMid
     AuthMid --> LedgerService
     AuthMid --> QueryService
-    LedgerService -->|ACID Transactions| LedgerTable
-    LedgerService --> ItemTable
-    QueryService -->|Dynamic SUM Aggregation| DB
+    AuthMid --> DashboardService
+    AuthMid --> CSVEngine
+    LedgerService -->|ACID Transactions & Row Locks| LedgerTable
+    LedgerService --> TimelineTable
+    QueryService -->|Dynamic CTE SUM Aggregation| DB
+    DashboardService -->|8-Week Window Aggregation| LedgerTable
+    CSVEngine -->|Row-by-Row Validation| DB
 ```
 
 ---
 
 ## Where does each piece run?
 
-- **Client:** Runs in the end-user's web browser as static assets compiled by Vite and hosted on Vercel.
-- **Server:** Runs as an Express.js HTTP process on Render (or a cloud container environment).
-- **Database:** Runs as a managed PostgreSQL instance on Supabase / Neon with automated backups, SSL connections, and connection pooling.
+- **Client:** Runs in the end-user's web browser as static assets compiled by Vite and hosted on Vercel (`https://inventory-management-assignment-tawny.vercel.app`).
+- **Server:** Runs as an Express.js HTTP process on Render (`https://inventory-control-api-6sgy.onrender.com`).
+- **Database:** Runs as a managed PostgreSQL instance on Supabase with automated connection pooling (`aws-0-ap-southeast-1.pooler.supabase.com:5432`).
 
 ---
 
@@ -68,11 +81,11 @@ flowchart TD
 *A warehouse staff member transfers 20 units of "10mm Copper Pipe" from "Warehouse A" to "Retail Floor B".*
 
 1. **Client Submission:**
-   - Staff selects the item, destination location, and quantity (20) in the Stock Movement modal and clicks "Confirm Transfer".
-   - Client sends `POST /api/movements/transfer` with `{ itemId, sourceLocationId, destinationLocationId, quantity: 20 }` and `Authorization: Bearer <token>`.
+   - Staff selects the item, destination location, and quantity (20) in the Stock Movement modal on `/movements` and clicks "Confirm Transfer".
+   - Client sends `POST /api/movements/transfer` with `{ itemId, sourceLocationId, destinationLocationId, quantity: 20 }`, accompanied by the browser's signed `httpOnly` cookie (`token=<jwt>`) and the anti-CSRF header `X-Requested-With: StockPulse-Client`.
 
 2. **Server Middleware Pipeline:**
-   - `requireAuth` parses and verifies the JWT, retrieving the user record and their assigned locations.
+   - `requireAuth` parses and verifies the JWT cookie, retrieving the user record and their assigned locations from `user_locations`.
    - `requireLocationPermission` checks if the user is a `MANAGER` or if `sourceLocationId` is in the user's `assignedLocationIds`. If the staff member is not assigned to "Warehouse A", the request immediately terminates with `403 Forbidden`.
 
 3. **Input Validation:**
@@ -80,7 +93,7 @@ flowchart TD
 
 4. **Transactional Execution & Concurrency Lock:**
    - Inside a Prisma/PostgreSQL `$transaction`:
-     - Locks the item's ledger records for the source location (`SELECT ... FOR UPDATE`).
+     - Evaluates the item's ledger records for the source location with row locks (`SELECT ... FOR UPDATE`).
      - Derives current on-hand stock at "Warehouse A":
        $$\text{Stock}_{\text{Source}} = \sum (\text{Receipts} + \text{Inbound Transfers}) - \sum (\text{Issues} + \text{Outbound Transfers}) \pm \text{Adjustments}$$
      - If $\text{Stock}_{\text{Source}} < 20$, the server aborts the transaction and returns `400 Bad Request` ("Insufficient stock at source location").
@@ -88,7 +101,7 @@ flowchart TD
 
 5. **Response & Client Update:**
    - Server commits the transaction and responds with `201 Created` and the created ledger entry.
-   - Client invalidates the cache for the item's ledger and updates the stock badge without full page reload.
+   - Client receives the confirmation, updates the ledger stream in real time, and refreshes the low-stock badge counter.
 
 ---
 
@@ -97,9 +110,12 @@ flowchart TD
 1. **Direct `on_hand` Column in the `items` Table:**
    - *Decision:* Rejected storing a cached `quantity_on_hand` counter in `items` that gets incremented/decremented.
    - *Why:* Storing a mutable balance invites drift and synchronization bugs during concurrent writes or server crashes. Requirement 4 explicitly mandates that on-hand quantity is **never** stored or edited directly, but always derived from the append-only ledger entries.
-2. **WebSockets for Real-time Streaming:**
-   - *Decision:* Used standard HTTP REST requests with targeted query refetching instead of persistent WebSocket connections.
-   - *Why:* Stock movements in this warehouse scenario occur on discrete user actions (receiving, picking, shipping). WebSockets would add stateful connection overhead on serverless/cloud platforms without tangible benefit over clean REST polling or invalidation.
-3. **Complex Multi-Step Wizard for Movements:**
+2. **Third-Party Charting Library Bloat (Recharts / Chart.js):**
+   - *Decision:* Implemented custom pure SVG visualizations (Category Donut with `stroke-dasharray` and dual-series 8-week movement bars) instead of pulling in libraries like Recharts or Chart.js.
+   - *Why:* Third-party charting libraries add 300kB+ of bloated JavaScript runtime and fragile DOM wrappers. Pure SVG renders instantly, scales responsively with vector precision down to 320px, and has zero runtime dependencies.
+3. **WebSockets for Real-time Streaming:**
+   - *Decision:* Used standard HTTP REST requests with targeted query refetching and client-side router navigation instead of persistent WebSocket connections.
+   - *Why:* Stock movements in warehouse scenarios occur on discrete user transactions (receiving, picking, transferring). WebSockets would add stateful connection overhead on serverless/cloud platforms without tangible benefit over clean REST polling and router state.
+4. **Complex Multi-Step Wizard for Movements:**
    - *Decision:* Built unified, rapid-entry movement modals instead of multi-page wizards.
-   - *Why:* Warehouse operators prioritize fast data entry. Single-view contextual dialogs with keyboard-friendly inputs minimize operational friction.
+   - *Why:* Warehouse operators prioritize speed of entry. Single-view contextual dialogs with keyboard-friendly inputs minimize operational friction.

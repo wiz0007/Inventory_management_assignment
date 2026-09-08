@@ -161,3 +161,46 @@ The default mobile response stacked `On-Hand Stock` and `Reorder Level` vertical
 4. **Balanced Touch Actions:** Refactored `.cardActions` buttons to share the row (`flex: 1 1 0`) for quick thumb taps without stretching awkwardly or wrapping unevenly.
 5. **Zero Horizontal Overflow:** Verified seamless rendering with no horizontal scrolling or clipped text across 320px, 360px, 412px, and 768px viewports.
 
+---
+
+## Milestone 11: Operational Analytics Dashboard & Bug Diagnoses (Sprint 6, Requirement 8)
+
+### Prompt 11
+> *"Implement Sprint 6: Analytics Dashboard & Visualizations (Requirement 8). Include 4 headline KPIs (active items, items at or below reorder level, movements today, distinct items moved this week), interactive category donut chart, warehouse location distribution, and 8-week movement volume trend comparing receipts vs issues. Enhance seed.ts with realistic 8-week historical activity."*
+
+### What you got (The Non-Existent Column SQL Crash & Mobile Layout Blowout)
+1. **Raw SQL Schema Hallucination:** During the initial implementation of `GET /api/dashboard/distribution`, the AI drafted a raw SQL query selecting `l.type` from the `locations` table. Running `npm run test:sprint6` failed immediately with:
+   `Raw query failed. Code: 42703. Message: column l.type does not exist`.
+2. **Horizontal Container Blowout & Text Truncation:** In the frontend, the trend chart SVG was given `min-width: 600px` without strict parent viewport boundaries. In addition, warehouse cards attempted to fit facility code (`WH-MAIN`), facility name (`Main Distribution Warehouse`), and unit stats (`717 units (77%)`) on a single line with `justify-content: space-between`. When viewports narrowed or DevTools were docked, the facility name truncated into `Wareh...` and the numbers were pushed completely off-screen.
+
+### What you corrected (SQL Alignment, Pure SVG Charts & Responsive Stacking)
+1. **SQL Schema Alignment:** Inspected `prisma/schema.prisma` and removed `l.type` from both the `SELECT` and `GROUP BY` clauses in `server/src/routes/dashboard.routes.ts`, restoring clean ledger aggregation.
+2. **Pure SVG Visualizations (Zero Dependency Overhead):** Created pure SVG Donut chart with `stroke-dasharray` / `stroke-dashoffset` circle segments and interactive center counter, and a dual-series 8-week movement velocity bar chart with weekly inspection details.
+3. **Responsive Stacking on Warehouse Cards:** Refactored `DashboardPage.module.css` so that on screens $\le 600\text{px}$, facility cards automatically transition into a 2-line layout:
+   - Line 1: Full-width facility code & name (`[WH-MAIN] Main Distribution Warehouse`) with zero truncation.
+   - Line 2: Unit balance on left, percentage share on right (`717 units (77%)`).
+   - Line 3: Progress bar.
+   - Line 4: SKU metadata count.
+4. **Strict Viewport Containment:** Added `minWidth: 0, width: '100%', overflowX: 'hidden'` to `<main>` in `App.tsx` and `.container` in `DashboardPage.module.css`, preventing any child SVG or table from blowing out the viewport width.
+
+---
+
+## Milestone 12: Client-Side Routing Architecture & Centralized `allRoutes.tsx`
+
+### Prompt 12
+> *"All the tabs in the navbar that are made, they are not made route-like. We have not used react-router-dom, why? We should have done that because when we traverse to one with the back option, we should be able to get to the back or something like that. Also, extract the routes into a dedicated allRoutes.tsx file rather than inlining them inside App.tsx."*
+
+### What you got (State-Only Tab Limitation)
+The project initially inherited single-page state-based tab switching (`useState('items')`) from the assignment starter template. This created three major UX flaws:
+1. The browser address bar remained static at `/`, preventing deep linking or bookmarking.
+2. Clicking the browser **Back** (`←`) or **Forward** (`→`) buttons did not navigate between tabs; it navigated out of the application.
+3. Refreshing (`F5`) always reset the screen to the default homepage, wiping the user's active view.
+
+### What you corrected (React Router v7 & Modular `allRoutes.tsx` Architecture)
+1. **Installed `react-router-dom` (v7):** Added `react-router-dom` to `client/package.json`.
+2. **Centralized Route Configuration (`client/src/routes/allRoutes.tsx`):** Extracted all page routes (`/dashboard`, `/items`, `/movements`, `/locations`, `/import-export`, `/alerts`, and fallback redirects) into a standalone, reusable `allRoutes.tsx` module, separating route configuration from root layout concerns.
+3. **Decoupled Root App Shell (`client/src/App.tsx`):** Simplified `App.tsx` to render Providers, `<Navbar>`, and `<AllRoutes />` inside an `<ErrorBoundary>` keyed to `location.pathname`.
+4. **Active Route Synchronization (`client/src/components/Navbar.tsx`):** Integrated `useNavigate()` and `useLocation()`. Nav clicks update browser history via `navigate(path)`, and tab active highlights automatically sync with `location.pathname`.
+5. **Full History Traversal & Refresh Persistence:** Verified that browser Back/Forward buttons traverse through tab history smoothly, page refresh preserves the active tab, and direct URL entry (e.g. `/alerts`) opens the requested page immediately.
+
+
