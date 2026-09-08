@@ -12,6 +12,7 @@ import { movementsRouter } from './routes/movements.routes';
 import { csvRouter } from './routes/csv.routes';
 import { alertsRouter } from './routes/alerts.routes';
 import { dashboardRouter } from './routes/dashboard.routes';
+import { reorderSuggestionsRouter } from './routes/reorderSuggestions.routes';
 
 const app = express();
 
@@ -39,6 +40,7 @@ app.use('/api/movements', movementsRouter);
 app.use('/api/csv', csvRouter);
 app.use('/api/alerts', alertsRouter);
 app.use('/api/dashboard', dashboardRouter);
+app.use('/api/reorder-suggestions', reorderSuggestionsRouter);
 
 // Global error handler
 app.use(errorHandler);

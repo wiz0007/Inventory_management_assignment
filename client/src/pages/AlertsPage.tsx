@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { 
   Bell, 
@@ -9,7 +10,11 @@ import {
   RefreshCw, 
   TrendingDown, 
   ShieldAlert,
-  ArrowLeftRight
+  ArrowLeftRight,
+  Download,
+  ShoppingCart,
+  Sparkles,
+  MapPin
 } from 'lucide-react';
 import styles from './AlertsPage.module.css';
 
@@ -41,6 +46,31 @@ export interface AlertItem {
   } | null;
 }
 
+export interface ReorderSuggestion {
+  itemId: string;
+  sku: string;
+  name: string;
+  category: string;
+  uom: string;
+  reorderLevel: number;
+  totalOnHand: number;
+  deficit: number;
+  targetStock: number;
+  recommendedOrderQuantity: number;
+  urgency: 'CRITICAL' | 'HIGH' | 'NORMAL';
+  suggestedLocation: {
+    id: string;
+    code: string;
+    name: string;
+  } | null;
+  locationBreakdown: {
+    locationId: string;
+    code: string;
+    name: string;
+    onHand: number;
+  }[];
+}
+
 interface AlertsPageProps {
   onNavigateToMovements?: () => void;
   onRefreshBadge?: () => void;
@@ -48,10 +78,14 @@ interface AlertsPageProps {
 
 export const AlertsPage: React.FC<AlertsPageProps> = ({ onNavigateToMovements, onRefreshBadge }) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
+  const [suggestions, setSuggestions] = useState<ReorderSuggestion[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [suggestionsLoading, setSuggestionsLoading] = useState<boolean>(false);
+  const [exportingCsv, setExportingCsv] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<'active' | 'dismissed' | 'all'>('active');
+  const [filter, setFilter] = useState<'active' | 'dismissed' | 'all' | 'reorder'>('active');
   const [dismissingId, setDismissingId] = useState<string | null>(null);
 
   const fetchAlerts = async () => {
@@ -75,9 +109,51 @@ export const AlertsPage: React.FC<AlertsPageProps> = ({ onNavigateToMovements, o
     }
   };
 
+  const fetchSuggestions = async () => {
+    try {
+      setSuggestionsLoading(true);
+      const res = await fetch('/api/reorder-suggestions', { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setSuggestions(data.suggestions || []);
+      }
+    } catch (err: any) {
+      console.error('Failed to load replenishment suggestions:', err);
+    } finally {
+      setSuggestionsLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchAlerts();
+    fetchSuggestions();
   }, []);
+
+  const handleDownloadRequisitionCSV = async () => {
+    try {
+      setExportingCsv(true);
+      const res = await fetch('/api/reorder-suggestions/export-csv', { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to generate PO requisition CSV');
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `po_reorder_requisitions_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err: any) {
+      alert(`Export Error: ${err.message}`);
+    } finally {
+      setExportingCsv(false);
+    }
+  };
+
+  const handle1ClickRestock = (item: ReorderSuggestion) => {
+    const destId = item.suggestedLocation?.id || '';
+    navigate(`/movements?action=new&type=RECEIPT&itemId=${item.itemId}&quantity=${item.recommendedOrderQuantity}&dest=${destId}`);
+  };
 
   const handleDismissAlert = async (itemId: string, itemName: string) => {
     if (!window.confirm(`Dismiss low-stock alert for "${itemName}"? The alert will remain silenced until stock rises above reorder level and falls back.`)) {
@@ -98,6 +174,7 @@ export const AlertsPage: React.FC<AlertsPageProps> = ({ onNavigateToMovements, o
       }
 
       await fetchAlerts();
+      await fetchSuggestions();
     } catch (err: any) {
       alert(`Dismissal Error: ${err.message}`);
     } finally {
@@ -226,17 +303,33 @@ export const AlertsPage: React.FC<AlertsPageProps> = ({ onNavigateToMovements, o
           >
             <span>All Monitored ({alerts.length})</span>
           </button>
+
+          <button
+            onClick={() => setFilter('reorder')}
+            className={`${styles.filterTabBtn} ${filter === 'reorder' ? styles.filterTabBtnActive : ''}`}
+            style={filter === 'reorder' ? { borderColor: '#10b981', color: '#34d399' } : {}}
+          >
+            <Sparkles size={14} color="#34d399" />
+            <span>Reorder Suggestions & PO</span>
+            <span 
+              className={styles.filterTabBadge}
+              style={{ background: suggestions.length > 0 ? '#10b981' : 'rgba(255, 255, 255, 0.1)', color: '#fff' }}
+            >
+              {suggestions.length}
+            </span>
+          </button>
         </div>
 
         {/* Mobile Dropdown Selector (<= 640px) */}
         <div className={styles.mobileFilterSelectWrapper}>
           <select
             value={filter}
-            onChange={(e) => setFilter(e.target.value as 'active' | 'dismissed' | 'all')}
+            onChange={(e) => setFilter(e.target.value as 'active' | 'dismissed' | 'all' | 'reorder')}
             className={styles.mobileFilterSelect}
             aria-label="Filter alerts view"
           >
             <option value="active">Active Alerts ({activeAlerts.length})</option>
+            <option value="reorder">Reorder Suggestions & PO ({suggestions.length})</option>
             <option value="dismissed">Dismissed by Manager ({dismissedAlerts.length})</option>
             <option value="all">All Monitored ({alerts.length})</option>
           </select>
@@ -265,32 +358,169 @@ export const AlertsPage: React.FC<AlertsPageProps> = ({ onNavigateToMovements, o
         </div>
       )}
 
-      {/* Loading state */}
-      {loading && alerts.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
-          <RefreshCw size={24} className="animate-spin" style={{ margin: '0 auto 0.75rem auto' }} />
-          <div>Evaluating real-time stock balances across all warehouse locations...</div>
-        </div>
-      )}
+      {/* Reorder Suggestions View */}
+      {filter === 'reorder' ? (
+        <div>
+          <div className={styles.reorderHeaderBanner}>
+            <div>
+              <div className={styles.reorderHeaderTitle}>
+                <Sparkles size={20} color="#34d399" />
+                <span>Automated Replenishment Requisitions (ROQ)</span>
+              </div>
+              <div className={styles.reorderHeaderSubtitle}>
+                Calculated using standard 2-period safety par buffers: Target Stock = 2 × Reorder Level.
+                Recommended Order Quantity (ROQ) = Target Stock − On-Hand.
+              </div>
+            </div>
 
-      {/* Empty State */}
-      {!loading && displayedAlerts.length === 0 && (
-        <div className={styles.emptyState}>
-          <div className={styles.emptyIcon}>
-            <CheckCircle2 size={28} />
+            <button
+              onClick={handleDownloadRequisitionCSV}
+              disabled={exportingCsv || suggestions.length === 0}
+              className={styles.csvExportBtn}
+              title="Export vendor-ready purchase order requisition CSV"
+            >
+              <Download size={16} />
+              <span>{exportingCsv ? 'Generating CSV...' : 'Export PO Requisition (CSV)'}</span>
+            </button>
           </div>
-          <div className={styles.emptyTitle}>
-            {filter === 'active' ? 'All Stock Levels Healthy' : 'No Alerts in this View'}
-          </div>
-          <p className={styles.emptyDesc}>
-            {filter === 'active' 
-              ? 'Every active inventory item currently maintains on-hand stock strictly above its configured reorder threshold.'
-              : 'There are currently no items matching the selected alert state filter.'}
-          </p>
+
+          {suggestionsLoading && suggestions.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
+              <RefreshCw size={24} className="animate-spin" style={{ margin: '0 auto 0.75rem auto' }} />
+              <div>Computing replenishment quantities across all warehouses...</div>
+            </div>
+          ) : suggestions.length === 0 ? (
+            <div className={styles.emptyState}>
+              <div className={styles.emptyIcon} style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34d399' }}>
+                <CheckCircle2 size={28} />
+              </div>
+              <div className={styles.emptyTitle}>No Restock Requisitions Needed</div>
+              <p className={styles.emptyDesc}>
+                All inventory items across all warehouse locations currently meet or exceed their target par levels.
+              </p>
+            </div>
+          ) : (
+            <div className={styles.reorderList}>
+              {suggestions.map((s) => {
+                let cardClass = styles.reorderCardNormal;
+                let urgencyBadgeClass = styles.urgencyBadgeNormal;
+                let urgencyLabel = 'NORMAL DEFICIT';
+
+                if (s.urgency === 'CRITICAL') {
+                  cardClass = styles.reorderCardCritical;
+                  urgencyBadgeClass = styles.urgencyBadgeCritical;
+                  urgencyLabel = 'CRITICAL STOCKOUT (0 ON-HAND)';
+                } else if (s.urgency === 'HIGH') {
+                  cardClass = styles.reorderCardHigh;
+                  urgencyBadgeClass = styles.urgencyBadgeHigh;
+                  urgencyLabel = 'HIGH DEFICIT (≤ 50% REORDER LEVEL)';
+                }
+
+                return (
+                  <div key={s.itemId} className={`${styles.reorderCard} ${cardClass}`}>
+                    <div className={styles.reorderTopRow}>
+                      <div className={styles.reorderItemInfo}>
+                        <div className={styles.reorderItemName}>{s.name}</div>
+                        <div className={styles.reorderMetaPills}>
+                          <span className={styles.itemSku}>{s.sku}</span>
+                          <span className={styles.categoryPill}>{s.category}</span>
+                          <span className={urgencyBadgeClass}>{urgencyLabel}</span>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => handle1ClickRestock(s)}
+                        className={styles.restockActionBtn}
+                        title="Open Movement form pre-filled with this item and suggested ROQ"
+                      >
+                        <ShoppingCart size={15} />
+                        <span>1-Click Restock Receipt (+{s.recommendedOrderQuantity} {s.uom})</span>
+                      </button>
+                    </div>
+
+                    <div className={styles.reorderMetricsGrid}>
+                      <div className={styles.reorderMetricBlock}>
+                        <span className={styles.reorderMetricLabel}>Current On-Hand</span>
+                        <span className={styles.reorderMetricVal} style={{ color: s.totalOnHand === 0 ? '#f87171' : '#fbbf24' }}>
+                          {s.totalOnHand} {s.uom}
+                        </span>
+                      </div>
+
+                      <div className={styles.reorderMetricBlock}>
+                        <span className={styles.reorderMetricLabel}>Reorder Threshold</span>
+                        <span className={styles.reorderMetricVal}>
+                          {s.reorderLevel} {s.uom}
+                        </span>
+                      </div>
+
+                      <div className={styles.reorderMetricBlock}>
+                        <span className={styles.reorderMetricLabel}>Target Par Stock</span>
+                        <span className={styles.reorderMetricVal}>
+                          {s.targetStock} {s.uom}
+                        </span>
+                      </div>
+
+                      <div className={styles.reorderMetricBlock}>
+                        <span className={styles.reorderMetricLabel}>Recommended Order</span>
+                        <span className={styles.roqHighlightVal}>
+                          +{s.recommendedOrderQuantity} {s.uom}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className={styles.reorderBottomRow}>
+                      <div className={styles.suggestedLocText}>
+                        <MapPin size={14} color="#94a3b8" />
+                        <span>
+                          Suggested Destination: <strong>{s.suggestedLocation?.name || 'Main Warehouse'}</strong> ({s.suggestedLocation?.code || 'WH-MAIN'})
+                        </span>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        {s.locationBreakdown.map((loc) => (
+                          <span key={loc.locationId}>
+                            {loc.code}: <strong>{loc.onHand}</strong>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
+      ) : (
+        <>
+          {/* Loading state */}
+          {loading && alerts.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
+              <RefreshCw size={24} className="animate-spin" style={{ margin: '0 auto 0.75rem auto' }} />
+              <div>Evaluating real-time stock balances across all warehouse locations...</div>
+            </div>
+          )}
+
+          {/* Empty State */}
+          {!loading && displayedAlerts.length === 0 && (
+            <div className={styles.emptyState}>
+              <div className={styles.emptyIcon}>
+                <CheckCircle2 size={28} />
+              </div>
+              <div className={styles.emptyTitle}>
+                {filter === 'active' ? 'All Stock Levels Healthy' : 'No Alerts in this View'}
+              </div>
+              <p className={styles.emptyDesc}>
+                {filter === 'active' 
+                  ? 'Every active inventory item currently maintains on-hand stock strictly above its configured reorder threshold.'
+                  : 'There are currently no items matching the selected alert state filter.'}
+              </p>
+            </div>
+          )}
+        </>
       )}
 
       {/* Alerts Cards List */}
+      {filter !== 'reorder' && (
       <div className={styles.alertList}>
         {displayedAlerts.map((item) => {
           const isCritical = item.totalOnHand === 0;
@@ -432,6 +662,7 @@ export const AlertsPage: React.FC<AlertsPageProps> = ({ onNavigateToMovements, o
           );
         })}
       </div>
+      )}
     </div>
   );
 };
