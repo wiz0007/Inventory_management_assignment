@@ -3,6 +3,10 @@
     {
       "source": "/api/:path*",
       "destination": "https://inventory-control-api-6sgy.onrender.com/api/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }
